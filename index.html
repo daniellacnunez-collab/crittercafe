@@ -1,0 +1,3191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Critter Cafe - iPad Trivia & Kitchen Rush</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        input, textarea, select {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(180deg, #FFF7ED 0%, #FEF3C7 100%);
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+        .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .btn-juicy {
+            transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.12s ease;
+            box-shadow: 0 6px 0 rgba(15, 23, 42, 0.22);
+        }
+        .btn-juicy:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(15, 23, 42, 0.22);
+        }
+        .btn-juicy:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .critter-bobble {
+            animation: bobble 2.2s ease-in-out infinite;
+        }
+        @keyframes bobble {
+            0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+            50% { transform: translateY(-5px) rotate(1.5deg); }
+        }
+        @keyframes earnPop {
+            0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+            25% { opacity: 1; transform: translateY(-2px) scale(1.1); }
+            85% { opacity: 1; transform: translateY(-10px) scale(1); }
+            100% { opacity: 0; transform: translateY(-18px) scale(0.95); }
+        }
+        .earn-badge-pop {
+            animation: earnPop 1.6s ease-out forwards;
+        }
+        @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(105vh) rotate(720deg); opacity: 0.9; }
+        }
+        .confetti-piece {
+            position: fixed;
+            top: -20px;
+            width: 12px;
+            height: 12px;
+            z-index: 9999;
+            pointer-events: none;
+            border-radius: 3px;
+            animation: confettiFall linear forwards;
+        }
+        .cafe-speech-bubble {
+            position: relative;
+            background: #FFFFFF;
+            border: 2px solid #D4D4D8;
+            border-radius: 6px;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
+        }
+        .cafe-speech-bubble::before {
+            content: '';
+            position: absolute;
+            left: -14px;
+            bottom: 24px;
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-right: 14px solid #D4D4D8;
+        }
+        .cafe-speech-bubble::after {
+            content: '';
+            position: absolute;
+            left: -11px;
+            bottom: 25px;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 12px solid #FFFFFF;
+        }
+        .cafe-plate-unlocked {
+            background: radial-gradient(circle at 35% 30%, #FFFFFF 0%, #F8FAFC 70%, #E2E8F0 100%);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.22), inset 0 2px 4px rgba(255, 255, 255, 0.95);
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
+        }
+        .cafe-plate-unlocked:active {
+            transform: translateY(4px) scale(0.97);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+        }
+        .cafe-plate-inner-rim {
+            border-top: 4px solid #E2E8F0;
+            border-radius: 9999px;
+        }
+        .cafe-plate-locked {
+            background: #8E8E8E;
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.22);
+        }
+        .cafe-plate-locked-inner {
+            background: #7A7A7A;
+            border-top: 4px solid #6B6B6B;
+        }
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #qr-printable-area, #qr-printable-area * {
+                visibility: visible !important;
+            }
+            #qr-printable-area {
+                position: fixed !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                box-shadow: none !important;
+                border: 6px solid #F59E0B !important;
+                background: #FFFFFF !important;
+                padding: 32px !important;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-dvh select-none text-slate-800">
+
+    <!-- ==================== PORTAL ROLE GATE (TEACHER vs STUDENT) ==================== -->
+    <div id="portal-gate" class="fixed inset-0 z-[80] bg-gradient-to-br from-amber-100 via-orange-50 to-sky-100 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div class="w-full max-w-4xl bg-white rounded-[28px] border-4 border-amber-400 shadow-2xl p-6 sm:p-9 my-auto">
+            <div class="text-center mb-7">
+                <div class="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-3 border-2 border-amber-300">
+                    <span>📱</span> iPad Classroom Edition • Audio + Picture Ready <span>🔊</span>
+                </div>
+                <div class="text-5xl sm:text-6xl mb-2 critter-bobble">🐻🦊🐼🐸</div>
+                <h1 class="font-display font-bold text-4xl sm:text-6xl text-amber-600 tracking-tight">
+                    Critter Cafe
+                </h1>
+                <p class="text-slate-600 font-bold text-base sm:text-lg mt-1.5">
+                    Choose your classroom portal to begin!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Student Portal Card -->
+                <button type="button" id="choose-student-portal-btn" class="btn-juicy group text-left bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-white rounded-[24px] border-4 border-emerald-800 p-6 sm:p-7 flex flex-col justify-between min-h-[210px]">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-5xl">🧒</span>
+                            <span class="bg-emerald-900/30 text-white text-xs font-extrabold uppercase px-3 py-1 rounded-full">For iPads</span>
+                        </div>
+                        <h2 class="font-display font-bold text-3xl sm:text-4xl mb-1.5">Student Cafe</h2>
+                        <p class="text-emerald-50 font-bold text-sm sm:text-base leading-snug">
+                            Pick your critter avatar, serve hungry customers, listen & match audio trivia, and climb the live class earnings board!
+                        </p>
+                    </div>
+                    <div class="mt-5 inline-flex items-center gap-2 bg-white text-emerald-700 font-display font-bold px-4 py-2 rounded-xl text-base self-start">
+                        <span>Enter Student Cafe</span>
+                        <span>→</span>
+                    </div>
+                </button>
+
+                <!-- Teacher Portal Card -->
+                <button type="button" id="choose-teacher-portal-btn" class="btn-juicy group text-left bg-gradient-to-b from-indigo-500 to-purple-700 hover:from-indigo-400 hover:to-purple-600 text-white rounded-[24px] border-4 border-indigo-900 p-6 sm:p-7 flex flex-col justify-between min-h-[210px]">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-5xl">👩‍🏫</span>
+                            <span class="bg-indigo-950/35 text-indigo-100 text-xs font-extrabold uppercase px-3 py-1 rounded-full">Dashboard & QR</span>
+                        </div>
+                        <h2 class="font-display font-bold text-3xl sm:text-4xl mb-1.5">Teacher Portal</h2>
+                        <p class="text-indigo-100 font-bold text-sm sm:text-base leading-snug">
+                            Watch live student earnings, add spoken audio/voice & pictures to questions or options, and display the iPad QR code.
+                        </p>
+                    </div>
+                    <div class="mt-5 inline-flex items-center gap-2 bg-white text-indigo-700 font-display font-bold px-4 py-2 rounded-xl text-base self-start">
+                        <span>Open Command Center</span>
+                        <span>→</span>
+                    </div>
+                </button>
+            </div>
+
+            <div class="mt-6 pt-4 border-t-2 border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm font-bold text-slate-500">
+                <div class="flex items-center gap-2">
+                    <span>🏫 Classroom Room Code:</span>
+                    <span id="gate-room-badge" class="bg-amber-100 text-amber-900 font-extrabold px-2.5 py-1 rounded-lg border border-amber-300">CAFE-101</span>
+                </div>
+                <div>
+                    Loaded with <strong>🧹 Housework & Chores Audio Pack</strong> (10 Phrases)!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TEACHER PORTAL (CLASSROOM COMMAND CENTER) ==================== -->
+    <div id="teacher-portal" class="hidden flex-1 flex flex-col min-h-dvh bg-slate-100">
+        <!-- Teacher Top Navigation Bar -->
+        <header class="bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 text-white px-4 sm:px-6 py-3.5 shadow-lg border-b-4 border-indigo-950 sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-400 border-2 border-amber-600 flex items-center justify-center text-2xl shadow">
+                        👩‍🏫
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="font-display font-bold text-xl sm:text-2xl leading-none">Teacher Command Center</h1>
+                            <span class="bg-emerald-400 text-emerald-950 text-[11px] font-black uppercase px-2 py-0.5 rounded-full">LIVE</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-1 text-xs font-bold text-indigo-200">
+                            <span>Room Code:</span>
+                            <input type="text" id="teacher-room-input" value="CAFE-101" maxlength="14" class="bg-indigo-950/60 border border-indigo-400 rounded-lg px-2 py-0.5 text-amber-300 font-extrabold uppercase w-28 text-center focus:outline-none">
+                            <span id="teacher-sync-status" class="text-emerald-300">● Cloud + Local Sync Ready</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Actions & Role Switch -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5 bg-indigo-950/50 border border-indigo-400/50 rounded-xl px-2.5 py-1.5 text-xs font-bold">
+                        <span>🔒 Kid PIN:</span>
+                        <input type="text" id="teacher-pin-input" value="1234" maxlength="4" inputmode="numeric" class="w-12 bg-white text-slate-900 font-black text-center rounded-md px-1 py-0.5">
+                    </div>
+
+                    <button type="button" id="switch-to-student-btn" class="btn-juicy bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold px-3.5 py-2 rounded-xl border-2 border-emerald-800 text-xs sm:text-sm flex items-center gap-1.5">
+                        <span>🧒</span>
+                        <span>Student View</span>
+                    </button>
+
+                    <button type="button" id="teacher-home-btn" class="bg-white/15 hover:bg-white/25 text-white font-bold px-3 py-2 rounded-xl text-xs sm:text-sm">
+                        Portals
+                    </button>
+                </div>
+            </div>
+
+            <!-- Teacher Portal Tabs -->
+            <div class="max-w-7xl mx-auto mt-3.5 flex flex-wrap gap-2">
+                <button type="button" data-teacher-tab="earnings" class="teacher-tab-btn btn-juicy bg-amber-400 text-amber-950 border-2 border-amber-600 font-display font-bold px-4 py-2.5 rounded-2xl text-sm sm:text-base flex items-center gap-2">
+                    <span>🏆</span>
+                    <span>Live Class Earnings</span>
+                    <span id="teacher-tab-student-count" class="bg-amber-950 text-amber-200 text-xs font-black px-2 py-0.5 rounded-full">0</span>
+                </button>
+
+                <button type="button" data-teacher-tab="studio" class="teacher-tab-btn btn-juicy bg-white/15 hover:bg-white/25 text-white border-2 border-white/25 font-display font-bold px-4 py-2.5 rounded-2xl text-sm sm:text-base flex items-center gap-2">
+                    <span>🔊</span>
+                    <span>Audio, Question & Image Studio</span>
+                    <span id="teacher-tab-q-count" class="bg-indigo-950 text-indigo-200 text-xs font-black px-2 py-0.5 rounded-full">10 Qs</span>
+                </button>
+
+                <button type="button" data-teacher-tab="qr" class="teacher-tab-btn btn-juicy bg-white/15 hover:bg-white/25 text-white border-2 border-white/25 font-display font-bold px-4 py-2.5 rounded-2xl text-sm sm:text-base flex items-center gap-2">
+                    <span>📱</span>
+                    <span>Student QR Join Station</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Teacher Main Workspace -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+            <!-- ===== TAB 1: LIVE CLASS EARNINGS & LEADERBOARD ===== -->
+            <section id="teacher-panel-earnings" class="space-y-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-white rounded-[24px] border-4 border-emerald-300 p-4 shadow-sm">
+                        <div class="text-xs font-extrabold uppercase text-slate-400">Total Class Cash</div>
+                        <div id="kpi-total-cash" class="font-display font-bold text-3xl sm:text-4xl text-emerald-600 mt-1">$0</div>
+                    </div>
+                    <div class="bg-white rounded-[24px] border-4 border-sky-300 p-4 shadow-sm">
+                        <div class="text-xs font-extrabold uppercase text-slate-400">Active Students</div>
+                        <div id="kpi-active-students" class="font-display font-bold text-3xl sm:text-4xl text-sky-600 mt-1">0</div>
+                    </div>
+                    <div class="bg-white rounded-[24px] border-4 border-amber-300 p-4 shadow-sm">
+                        <div class="text-xs font-extrabold uppercase text-slate-400">Customers Served</div>
+                        <div id="kpi-total-served" class="font-display font-bold text-3xl sm:text-4xl text-amber-600 mt-1">0</div>
+                    </div>
+                    <div class="bg-white rounded-[24px] border-4 border-purple-300 p-4 shadow-sm">
+                        <div class="text-xs font-extrabold uppercase text-slate-400">Class Accuracy</div>
+                        <div id="kpi-avg-accuracy" class="font-display font-bold text-3xl sm:text-4xl text-purple-600 mt-1">100%</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[24px] border-4 border-slate-200 p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" id="broadcast-rush-btn" class="btn-juicy bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-amber-950 font-display font-bold px-4 py-3 rounded-2xl border-3 border-orange-700 text-sm sm:text-base flex items-center gap-2">
+                            <span>⚡</span>
+                            <span id="broadcast-rush-label">Launch 2x Cash Rush Hour! (30s)</span>
+                        </button>
+
+                        <button type="button" id="simulate-students-btn" class="btn-juicy bg-sky-500 hover:bg-sky-400 text-white font-display font-bold px-4 py-3 rounded-2xl border-3 border-sky-700 text-sm sm:text-base flex items-center gap-2">
+                            <span>🤖</span>
+                            <span>Simulate Live Class Demo</span>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="teacher-sort-select" class="bg-slate-50 border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-extrabold text-slate-700">
+                            <option value="cash">Sort: Highest Cash ($)</option>
+                            <option value="accuracy">Sort: Trivia Accuracy (%)</option>
+                            <option value="served">Sort: Customers Served</option>
+                        </select>
+
+                        <button type="button" id="export-csv-btn" class="btn-juicy bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-3.5 py-2.5 rounded-xl border-2 border-emerald-700 text-xs sm:text-sm">
+                            📊 Export CSV
+                        </button>
+
+                        <button type="button" id="reset-leaderboard-btn" class="btn-juicy bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3.5 py-2.5 rounded-xl border-2 border-rose-300 text-xs sm:text-sm">
+                            🗑️ Reset Board
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[24px] border-4 border-indigo-200 shadow-md overflow-hidden">
+                    <div class="bg-indigo-50 px-5 py-3.5 border-b-2 border-indigo-100 flex items-center justify-between">
+                        <h2 class="font-display font-bold text-xl text-indigo-950 flex items-center gap-2">
+                            <span>💰</span>
+                            <span>Live Student Cafe Earnings</span>
+                        </h2>
+                        <span class="text-xs font-extrabold text-indigo-600">Updates automatically as kids earn cash</span>
+                    </div>
+
+                    <div id="teacher-leaderboard-list" class="divide-y-2 divide-slate-100">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TAB 2: AUDIO, QUESTION & IMAGE STUDIO ===== -->
+            <section id="teacher-panel-studio" class="hidden space-y-4">
+                <div class="bg-white rounded-[24px] border-4 border-purple-300 p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="studio-preset-loader" class="bg-purple-50 border-2 border-purple-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-extrabold text-purple-950">
+                            <option value="">✨ Load Preset Pack...</option>
+                            <option value="housework">🧹 Housework & Chores (Audio + Picture)</option>
+                            <option value="picture">🖼️ Picture Match (Kid Friendly)</option>
+                            <option value="math">➗ Math Blitz</option>
+                            <option value="science">🔬 Science & Space</option>
+                            <option value="mixed">🎲 All Mix</option>
+                        </select>
+
+                        <button type="button" id="studio-add-q-btn" class="btn-juicy bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold px-4 py-2.5 rounded-xl border-2 border-emerald-700 text-sm flex items-center gap-1.5">
+                            <span>➕</span>
+                            <span>Add Question</span>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" id="export-json-btn" class="btn-juicy bg-sky-500 hover:bg-sky-400 text-white font-bold px-3.5 py-2.5 rounded-xl border-2 border-sky-700 text-xs sm:text-sm">
+                            💾 Export .JSON
+                        </button>
+
+                        <label class="btn-juicy bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold px-3.5 py-2.5 rounded-xl border-2 border-amber-600 text-xs sm:text-sm cursor-pointer">
+                            📂 Import .JSON
+                            <input type="file" id="import-json-input" accept=".json,application/json" class="hidden">
+                        </label>
+
+                        <button type="button" id="save-studio-btn" class="btn-juicy bg-purple-600 hover:bg-purple-500 text-white font-display font-bold px-4 py-2.5 rounded-xl border-2 border-purple-900 text-sm">
+                            ✓ Save Deck
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Question Cards Editor List -->
+                <div id="studio-questions-list" class="space-y-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- ===== TAB 3: STUDENT QR JOIN STATION ===== -->
+            <section id="teacher-panel-qr" class="hidden">
+                <div class="bg-white rounded-[28px] border-4 border-sky-400 shadow-lg p-5 sm:p-8 max-w-3xl mx-auto text-center space-y-5">
+                    <div>
+                        <h2 class="font-display font-bold text-3xl text-sky-700">📱 iPad Classroom QR Join Station</h2>
+                        <p class="text-slate-600 font-bold text-sm sm:text-base mt-1">
+                            Project this QR code on your board or print station cards. Kids scan with their iPad Camera to join your room with your audio & picture deck!
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-center gap-3 bg-sky-50 border-2 border-sky-200 rounded-2xl p-3">
+                        <span class="text-xs sm:text-sm font-extrabold text-sky-950">Select Deck to Encode:</span>
+                        <select id="qr-deck-select" class="bg-white border-2 border-sky-400 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-extrabold text-slate-800">
+                            <option value="custom">⭐ My Studio Set</option>
+                            <option value="housework">🧹 Housework & Chores (Audio + Picture)</option>
+                            <option value="picture">🖼️ Picture Match Pack</option>
+                            <option value="math">➗ Math Blitz Pack</option>
+                            <option value="science">🔬 Science & Space Pack</option>
+                            <option value="mixed">🎲 All Mix Pack</option>
+                        </select>
+                    </div>
+
+                    <div id="qr-printable-area" class="bg-white border-4 border-amber-400 rounded-[28px] p-6 shadow-md inline-flex flex-col items-center max-w-md w-full mx-auto">
+                        <div class="font-display font-bold text-3xl text-amber-600 mb-1">🐻 Critter Cafe 🥞</div>
+                        <div id="qr-card-subtitle" class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            My Studio Set
+                        </div>
+                        <div id="qr-card-room" class="bg-indigo-100 text-indigo-900 text-xs font-black px-3 py-1 rounded-full mb-4">
+                            ROOM: CAFE-101
+                        </div>
+
+                        <div id="qr-code-container" class="bg-white p-4 rounded-2xl border-2 border-slate-200 flex items-center justify-center min-h-[250px] min-w-[250px]">
+                        </div>
+
+                        <div class="mt-4 bg-amber-50 border-2 border-amber-200 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-extrabold text-amber-950 leading-relaxed">
+                            1. Open iPad Camera 📷 &nbsp;→&nbsp; 2. Scan QR &nbsp;→&nbsp; 3. Pick your Critter & Play!
+                        </div>
+                    </div>
+
+                    <div class="max-w-lg mx-auto bg-slate-50 border-2 border-slate-200 rounded-2xl p-3.5 text-left">
+                        <div class="flex items-center justify-between text-xs font-extrabold mb-1.5">
+                            <span class="text-slate-600">QR Code Density & Scanability</span>
+                            <span id="qr-capacity-label" class="text-emerald-600">Optimal</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                            <div id="qr-capacity-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 20%"></div>
+                        </div>
+                        <p id="qr-photo-warning" class="hidden mt-2 text-xs font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded-xl px-3 py-2">
+                            💡 Local camera photos/voice recordings automatically convert to stickers & TTS speech in the QR link so the code scans quickly on iPads!
+                        </p>
+                    </div>
+
+                    <div class="max-w-lg mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" id="copy-qr-link-btn" class="btn-juicy bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold py-3.5 px-4 rounded-2xl border-3 border-emerald-700 text-base flex items-center justify-center gap-2">
+                            <span>📋</span>
+                            <span id="copy-qr-link-text">Copy Student Join Link</span>
+                        </button>
+
+                        <button type="button" id="print-qr-card-btn" class="btn-juicy bg-amber-400 hover:bg-amber-300 text-amber-950 font-display font-bold py-3.5 px-4 rounded-2xl border-3 border-amber-600 text-base flex items-center justify-center gap-2">
+                            <span>🖨️</span>
+                            <span>Print QR Station Card</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ==================== STUDENT CHECK-IN / AVATAR PICKER SCREEN ==================== -->
+    <div id="student-checkin-screen" class="hidden fixed inset-0 z-[70] bg-gradient-to-b from-amber-100 via-orange-50 to-emerald-100 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div class="w-full max-w-2xl bg-white rounded-[28px] border-4 border-amber-400 shadow-2xl p-6 sm:p-8 my-auto text-center">
+            <div class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-900 px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-2 border-2 border-emerald-300">
+                <span>🏫 Room:</span>
+                <span id="checkin-room-label">CAFE-101</span>
+                <span>•</span>
+                <span id="checkin-deck-label">Critter Deck</span>
+            </div>
+
+            <h1 class="font-display font-bold text-3xl sm:text-5xl text-amber-600 mt-1">
+                Open Your Critter Cafe!
+            </h1>
+            <p class="text-slate-600 font-bold text-sm sm:text-base mt-1 mb-5">
+                Type your name and tap your favorite critter chef!
+            </p>
+
+            <div class="mb-5 text-left">
+                <label for="student-name-input" class="block text-xs sm:text-sm font-extrabold uppercase text-slate-500 mb-1.5 ml-1">
+                    1. Your Chef Nickname
+                </label>
+                <input type="text" id="student-name-input" maxlength="16" placeholder="e.g. Maya, Leo, Chef Sam..." class="w-full bg-amber-50 border-4 border-amber-300 focus:border-emerald-500 rounded-2xl px-4 py-3.5 font-display font-bold text-2xl text-slate-800 text-center focus:outline-none">
+            </div>
+
+            <div class="mb-6 text-left">
+                <div class="text-xs sm:text-sm font-extrabold uppercase text-slate-500 mb-2 ml-1">
+                    2. Pick Your Critter Avatar
+                </div>
+                <div id="avatar-picker-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+                </div>
+            </div>
+
+            <button type="button" id="student-start-cafe-btn" class="btn-juicy w-full py-5 px-6 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-white font-display font-bold text-3xl sm:text-4xl rounded-[24px] border-4 border-emerald-800 shadow-xl flex items-center justify-center gap-3">
+                <span>OPEN MY CAFE!</span>
+                <span>🔔</span>
+            </button>
+
+            <div class="mt-4 flex items-center justify-between text-xs font-extrabold text-slate-400">
+                <span>🔒 Kid-Safe Mode On</span>
+                <button type="button" id="checkin-teacher-lock-btn" class="text-slate-500 hover:text-indigo-600 underline py-1 px-2">
+                    🔒 Teacher Portal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STUDENT CAFE PORTAL + BLOOKET-STYLE CAFE LAYOUT ==================== -->
+    <div id="student-portal" class="hidden flex-1 flex flex-col min-h-dvh bg-[#585858] overflow-hidden">
+
+        <div id="rush-hour-banner" class="hidden bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white text-center py-1.5 px-4 font-display font-bold text-sm sm:text-lg tracking-wide shadow-md z-30">
+            ⚡ TEACHER BONUS RUSH HOUR! ALL ORDERS PAY 2X CASH! (<span id="rush-hour-timer">30</span>s) ⚡
+        </div>
+
+        <!-- 1. TOP PURPLE HEADER BAR (#813fa3) -->
+        <header class="bg-[#813fa3] text-white px-3 sm:px-5 h-12 sm:h-14 flex items-center justify-between shadow-md z-20 shrink-0">
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <button type="button" id="student-fullscreen-btn" class="p-1.5 rounded-lg hover:bg-white/15 active:scale-95 transition flex items-center justify-center" title="Toggle Fullscreen">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                </button>
+                <span id="hud-student-avatar" class="text-xl sm:text-2xl leading-none">🦊</span>
+                <span id="hud-student-name" class="font-display font-bold text-lg sm:text-2xl tracking-wide uppercase truncate">ALY</span>
+                <span id="hud-student-rank" class="bg-white/20 text-white text-xs font-black px-2 py-0.5 rounded-full">#1</span>
+                <span class="hidden md:inline-flex items-center gap-1 bg-purple-950/35 text-purple-100 text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                    Room <span id="hud-room-code">CAFE-101</span> • Served <span id="hud-served-count">0</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="hidden sm:flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-full text-xs font-extrabold" title="Serving Streak">
+                    <span>🔥</span>
+                    <span id="hud-streak">0x</span>
+                </div>
+
+                <button type="button" id="toggle-earnings-sidebar-btn" class="bg-amber-400 hover:bg-amber-300 text-amber-950 font-display font-bold px-2.5 py-1 rounded-xl text-xs sm:text-sm flex items-center gap-1 shadow-sm" title="Live Kids' Earnings">
+                    <span>🏆</span>
+                    <span class="hidden sm:inline">Earnings</span>
+                </button>
+
+                <button type="button" id="mute-toggle-btn" class="p-1.5 rounded-lg hover:bg-white/15 text-base sm:text-lg leading-none" title="Toggle Sound">
+                    🔊
+                </button>
+
+                <button type="button" id="student-teacher-lock-btn" class="p-1.5 rounded-lg hover:bg-white/15 text-xs font-extrabold flex items-center gap-1" title="Teacher Portal">
+                    <span>🔒</span>
+                </button>
+
+                <div id="hud-cash" class="font-display font-bold text-2xl sm:text-3xl tracking-tight text-white pl-1">
+                    $0
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace Container -->
+        <div class="flex-1 flex relative overflow-hidden">
+
+            <div class="flex-1 flex flex-col justify-between min-w-0 relative">
+
+                <!-- 2. UPPER CUSTOMER COUNTER AREA (#f8f8f8 off-white wall) -->
+                <section class="bg-[#f8f8f8] flex-1 min-h-[220px] sm:min-h-[260px] px-3 sm:px-6 py-3 sm:py-4 flex flex-col justify-between relative border-b-2 border-slate-200 overflow-hidden">
+                    <div class="w-full max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/80 shrink-0">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <span id="hud-cafe-level-badge" class="bg-purple-600 text-white font-display font-bold text-xs sm:text-sm px-3 py-1 rounded-full shadow-sm">
+                                ⭐ Cafe Lv.1 / 10
+                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-24 sm:w-36 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div id="hud-cafe-xp-bar" class="h-full bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <span id="hud-cafe-level-desc" class="text-[11px] sm:text-xs font-extrabold text-slate-600">
+                                    3 Seats • Up to 1x Orders
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span id="hud-auto-server-pill" class="hidden bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-black px-2.5 py-1 rounded-full">
+                                🤖 Auto-Serve ON
+                            </span>
+                            <button type="button" id="serve-all-ready-btn" class="btn-juicy bg-emerald-500 hover:bg-emerald-400 text-white font-display font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-xl border-2 border-emerald-700 flex items-center gap-1.5">
+                                <span>⚡</span>
+                                <span id="serve-all-ready-label">Serve All Ready (0)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Two-Row Multi-Seat Customer Counter (Up to 10 Customers: 5 Top Row, 5 Bottom Row) -->
+                    <div id="customers-grid" class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 place-items-end pt-3 pb-1 px-2 overflow-y-auto">
+                    </div>
+
+                    <button type="button" id="right-edge-earnings-tab" class="fixed right-0 top-20 z-30 bg-[#3a3a3a] hover:bg-[#2b2b2b] border-l-2 border-y-2 border-slate-500 rounded-l-xl p-2 shadow-lg flex flex-col items-center gap-1 transition-transform active:scale-95" title="Toggle Live Kids' Earnings">
+                        <span class="text-xl sm:text-2xl leading-none text-amber-400">✴️</span>
+                        <span class="text-[9px] font-black uppercase text-amber-300 tracking-tighter">Board</span>
+                    </button>
+                </section>
+
+                <!-- 3. VIBRANT GREEN CAFE COUNTERTOP (#3fb622) -->
+                <section class="bg-[#3fb622] border-b-[14px] border-[#2c8c15] px-3 sm:px-8 py-4 sm:py-6 flex flex-col items-center justify-center relative shadow-inner">
+                    <div id="food-stations-grid" class="w-full max-w-5xl flex flex-col items-center gap-3 sm:gap-4">
+                    </div>
+                </section>
+
+                <!-- 4. BOTTOM DARK GRAY FLOOR BAR (#585858) -->
+                <footer class="bg-[#585858] px-4 py-3.5 sm:py-4 flex items-center justify-center gap-4 sm:gap-8 shrink-0">
+                    <button type="button" id="open-restock-btn" class="relative bg-[#38b6cf] hover:bg-[#2ea7bf] active:translate-y-0.5 text-white font-display font-bold text-xl sm:text-2xl px-7 sm:px-12 py-3.5 sm:py-4 rounded-xl shadow-md transition min-w-[165px] sm:min-w-[235px] text-center">
+                        Restock Food
+                        <span class="hidden md:inline-block absolute -bottom-2 -left-3 bg-white text-slate-700 border border-slate-300 rounded px-1.5 py-0.5 text-[10px] font-sans font-extrabold shadow-sm">Space</span>
+                    </button>
+
+                    <button type="button" id="open-shop-btn" class="bg-[#9e7330] hover:bg-[#b58335] active:translate-y-0.5 text-white/95 font-display font-bold text-xl sm:text-2xl px-7 sm:px-12 py-3.5 sm:py-4 rounded-xl shadow-md transition min-w-[165px] sm:min-w-[235px] text-center">
+                        Upgrade Shop
+                    </button>
+                </footer>
+            </div>
+
+            <!-- SLIDE-OUT LIVE KIDS' EARNINGS SIDEBAR -->
+            <aside id="kids-earnings-sidebar" class="hidden w-72 sm:w-80 bg-white border-l-4 border-[#813fa3] shadow-2xl flex flex-col z-40 shrink-0">
+                <div class="bg-[#813fa3] text-white px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏆</span>
+                        <div>
+                            <h2 class="font-display font-bold text-lg leading-none">Kids' Earnings</h2>
+                            <p class="text-[11px] font-bold text-purple-200 mt-0.5">Live Class Leaderboard</p>
+                        </div>
+                    </div>
+                    <button type="button" id="close-earnings-sidebar-btn" class="bg-white/20 hover:bg-white/30 text-white font-extrabold px-2.5 py-1 rounded-lg text-xs">
+                        ✕
+                    </button>
+                </div>
+
+                <div id="student-side-leaderboard" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50">
+                </div>
+
+                <div class="bg-purple-50 border-t border-purple-200 px-3 py-2 text-center text-[11px] font-extrabold text-purple-900">
+                    Serve guests & answer trivia to earn cash! 💵
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- ==================== RESTOCK TRIVIA MODAL (WITH AUDIO + PICTURES) ==================== -->
+    <div id="restock-modal" class="hidden fixed inset-0 z-[55] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div class="w-full max-w-3xl bg-white rounded-[28px] border-4 border-sky-400 shadow-2xl overflow-hidden my-auto">
+            <div class="bg-gradient-to-r from-sky-500 to-blue-600 text-white px-5 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🧠</span>
+                    <div>
+                        <h3 class="font-display font-bold text-xl sm:text-2xl leading-none">Restock Trivia!</h3>
+                        <p class="text-sky-100 text-xs font-bold mt-0.5">Listen or look closely, then tap the matching answer!</p>
+                    </div>
+                </div>
+                <button type="button" id="close-restock-btn" class="bg-white/20 hover:bg-white/30 text-white font-extrabold px-3.5 py-2 rounded-xl text-sm">
+                    ✕ Back to Cafe
+                </button>
+            </div>
+
+            <div class="p-5 sm:p-6 space-y-4">
+                <!-- Question Prompt, Audio Player & Optional Image -->
+                <div class="bg-sky-50 border-3 border-sky-200 rounded-2xl p-4 text-center">
+                    <div id="trivia-q-img-wrap" class="hidden mb-3 flex justify-center">
+                    </div>
+                    <div id="trivia-question-text" class="font-display font-bold text-2xl sm:text-3xl text-slate-800">
+                        Question goes here?
+                    </div>
+                </div>
+
+                <!-- 4 Answer Options Grid (Supports Audio Speaker Buttons + Pictures) -->
+                <div id="trivia-options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="trivia-feedback" class="hidden rounded-2xl p-3.5 text-center font-display font-bold text-xl"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== UPGRADE SHOP MODAL ==================== -->
+    <div id="shop-modal" class="hidden fixed inset-0 z-[55] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div class="w-full max-w-2xl bg-white rounded-[28px] border-4 border-purple-400 shadow-2xl overflow-hidden my-auto">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🛒</span>
+                    <h3 class="font-display font-bold text-xl sm:text-2xl">Cafe Upgrades Shop</h3>
+                </div>
+                <button type="button" id="close-shop-btn" class="bg-white/20 hover:bg-white/30 text-white font-extrabold px-3.5 py-2 rounded-xl text-sm">
+                    ✕ Done
+                </button>
+            </div>
+            <div id="upgrades-list" class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[75dvh] overflow-y-auto">
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STICKER PICKER MODAL ==================== -->
+    <div id="sticker-modal" class="hidden fixed inset-0 z-[75] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-xl bg-white rounded-[28px] border-4 border-amber-400 shadow-2xl overflow-hidden flex flex-col max-h-[80dvh]">
+            <div class="bg-amber-400 px-4 py-3 flex items-center justify-between">
+                <h3 class="font-display font-bold text-xl text-amber-950">🦄 Pick a Kid-Friendly Sticker</h3>
+                <button type="button" id="close-sticker-modal-btn" class="bg-amber-950/15 hover:bg-amber-950/25 text-amber-950 font-extrabold px-3 py-1 rounded-xl text-sm">✕</button>
+            </div>
+            <div id="sticker-category-tabs" class="flex items-center gap-1.5 px-4 pt-3 pb-2 overflow-x-auto border-b border-slate-100"></div>
+            <div id="sticker-grid" class="p-4 overflow-y-auto grid grid-cols-4 sm:grid-cols-6 gap-2.5"></div>
+        </div>
+    </div>
+
+    <!-- ==================== IMAGE LIGHTBOX MODAL ==================== -->
+    <div id="lightbox-modal" class="hidden fixed inset-0 z-[85] bg-slate-900/90 flex items-center justify-center p-4">
+        <div class="relative max-w-2xl w-full bg-white rounded-3xl p-4 text-center">
+            <img id="lightbox-img" src="" alt="Zoomed Question Visual" class="max-h-[70dvh] mx-auto rounded-2xl object-contain">
+            <button type="button" id="close-lightbox-btn" class="btn-juicy mt-4 bg-amber-400 text-amber-950 font-display font-bold px-6 py-2.5 rounded-2xl border-2 border-amber-600 text-lg">
+                Close Zoom ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== TEACHER PIN UNLOCK MODAL ==================== -->
+    <div id="pin-modal" class="hidden fixed inset-0 z-[90] bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white rounded-[28px] border-4 border-indigo-400 shadow-2xl p-6 text-center">
+            <div class="text-4xl mb-2">🔒</div>
+            <h3 class="font-display font-bold text-2xl text-slate-800">Teacher Portal Lock</h3>
+            <p class="text-xs font-bold text-slate-500 mt-1 mb-4">Enter 4-digit Teacher PIN (default: 1234)</p>
+            <input type="password" id="pin-verify-input" maxlength="4" inputmode="numeric" placeholder="••••" class="w-40 mx-auto bg-slate-100 border-3 border-indigo-300 rounded-2xl py-3 text-center font-display font-bold text-3xl tracking-widest focus:outline-none">
+            <div id="pin-error-msg" class="hidden text-xs font-extrabold text-rose-600 mt-2">Incorrect PIN! Try again.</div>
+            <div class="grid grid-cols-2 gap-2.5 mt-5">
+                <button type="button" id="pin-cancel-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-2xl">Cancel</button>
+                <button type="button" id="pin-submit-btn" class="btn-juicy bg-indigo-600 text-white font-display font-bold py-3 rounded-2xl border-2 border-indigo-900">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * CRITTER CAFE — CLASSROOM IPAD GAME WITH AUDIO + PICTURE TRIVIA
+         * ============================================================================
+         */
+
+        // --- Web Audio Synthesizer (Sound Effects) ---
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            tone(freq, type = 'sine', duration = 0.14, gainVal = 0.14, delay = 0) {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + delay);
+                    osc.stop(this.ctx.currentTime + delay + duration);
+                } catch (e) {}
+            }
+            pop() { this.tone(520, 'triangle', 0.08, 0.12); }
+            cash() {
+                this.tone(880, 'sine', 0.1, 0.14, 0);
+                this.tone(1174.66, 'sine', 0.22, 0.16, 0.08);
+            }
+            correct() {
+                this.tone(523.25, 'triangle', 0.12, 0.15, 0);
+                this.tone(659.25, 'triangle', 0.12, 0.15, 0.09);
+                this.tone(783.99, 'triangle', 0.22, 0.18, 0.18);
+            }
+            wrong() {
+                this.tone(240, 'sawtooth', 0.18, 0.12, 0);
+                this.tone(190, 'sawtooth', 0.24, 0.12, 0.12);
+            }
+            rankUp() {
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tone(f, 'triangle', 0.15, 0.14, i * 0.07));
+            }
+        }
+        const sfx = new SoundFX();
+
+        // --- Spoken Audio Engine (Speech Synthesis + Recorded Teacher Audio) ---
+        let activeMediaRecorder = null;
+        let activeAudioChunks = [];
+        let activeRecordingTarget = null;
+        let currentPlayingAudio = null;
+
+        function playAudioClip(audioSpec, fallbackText = '') {
+            if (currentPlayingAudio) {
+                try { currentPlayingAudio.pause(); } catch (e) {}
+                currentPlayingAudio = null;
+            }
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+            }
+
+            if (!audioSpec && !fallbackText) return;
+
+            if (audioSpec && audioSpec.startsWith('data:audio/')) {
+                const audio = new Audio(audioSpec);
+                currentPlayingAudio = audio;
+                audio.play().catch(() => {});
+                return;
+            }
+
+            const spokenPhrase = (audioSpec && audioSpec.startsWith('tts:'))
+                ? audioSpec.slice(4).trim()
+                : (audioSpec || fallbackText || '').trim();
+
+            if (!spokenPhrase) return;
+
+            if ('speechSynthesis' in window) {
+                const utter = new SpeechSynthesisUtterance(spokenPhrase);
+                utter.lang = 'en-US';
+                utter.rate = 0.88;
+                utter.pitch = 1.05;
+                window.speechSynthesis.speak(utter);
+            }
+        }
+
+        // --- Kid-Friendly Avatars & Stickers ---
+        const STUDENT_AVATARS = [
+            { emoji: '🦊', name: 'Fox' },
+            { emoji: '🐼', name: 'Panda' },
+            { emoji: '🐸', name: 'Frog' },
+            { emoji: '🐰', name: 'Bunny' },
+            { emoji: '🦁', name: 'Lion' },
+            { emoji: '🐧', name: 'Penguin' },
+            { emoji: '🐨', name: 'Koala' },
+            { emoji: '🦄', name: 'Unicorn' },
+            { emoji: '🐯', name: 'Tiger' },
+            { emoji: '🐶', name: 'Puppy' },
+            { emoji: '🐱', name: 'Kitty' },
+            { emoji: '🦉', name: 'Owl' }
+        ];
+
+        const STICKER_CATEGORIES = {
+            'Housework 🧹': ['🧹', '🧼', '🧽', '🍽️', '🍳', '🍴', '👕', '🛏️', '🧸', '🏠', '🪣', '🧺', '🚿', '🧻', '🗑️', '🫧', '🧤', '✨'],
+            'Animals 🐻': ['🐻', '🦊', '🐼', '🐸', '🦁', '🐧', '🐨', '🦄', '🐯', '🐶', '🐱', '🦉', '🐮', '🐷', '🐵', '🐝', '🐢', '🐙'],
+            'Food & Cafe 🥞': ['🍞', '🥣', '🍨', '🥞', '🧇', '🌭', '🍳', '🧃', '🥛', '🍎', '🍌', '🍓', '🍕', '🌮', '🍩', '🍪', '🧁', '🍦'],
+            'Space & Science 🚀': ['🚀', '🪐', '🌍', '🌙', '⭐', '☀️', '🌈', '⚡', '🔥', '💧', '🌱', '🔬', '🧪', '🧲', '🦕', '🌋', '❄️', '💎'],
+            'Shapes & Math 🔺': ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🔺', '🔶', '⬛', '⬜', '➕', '➖', '✖️', '➗', '💯', '🏆', '🎯', '🎲']
+        };
+
+        function makeQ(q, qImg, rawOptions, correctIndex, pack = 'Custom', qAudio = '', hideOptionText = false) {
+            const options = rawOptions.map(o => {
+                if (typeof o === 'string') return { text: o, img: '', audio: '' };
+                return { text: o.text || '', img: o.img || '', audio: o.audio || '' };
+            });
+            return {
+                q,
+                qImg: qImg || '',
+                qAudio: qAudio || '',
+                hideOptionText: Boolean(hideOptionText),
+                options,
+                correctIndex: Number(correctIndex) || 0,
+                pack
+            };
+        }
+
+        const PRESET_PACKS = {
+            housework: [
+                // ===== PART 1 (1–10): LOOK AT THE PICTURE -> LISTEN TO THE 4 AUDIO OPTIONS =====
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:housework', [
+                    { text: 'housework', img: '', audio: 'tts:housework' },
+                    { text: 'cook meals', img: '', audio: 'tts:cook meals' },
+                    { text: 'make the bed', img: '', audio: 'tts:make the bed' },
+                    { text: 'put away toys', img: '', audio: 'tts:put away toys' }
+                ], 0, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:sweep', [
+                    { text: 'wash dishes', img: '', audio: 'tts:wash dishes' },
+                    { text: 'sweep the floor', img: '', audio: 'tts:sweep the floor' },
+                    { text: 'fold clothes', img: '', audio: 'tts:fold clothes' },
+                    { text: 'set the table', img: '', audio: 'tts:set the table' }
+                ], 1, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:vacuum', [
+                    { text: 'make the bed', img: '', audio: 'tts:make the bed' },
+                    { text: 'clean the bathroom', img: '', audio: 'tts:clean the bathroom' },
+                    { text: 'vacuum the floor', img: '', audio: 'tts:vacuum the floor' },
+                    { text: 'put away toys', img: '', audio: 'tts:put away toys' }
+                ], 2, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:bathroom', [
+                    { text: 'cook meals', img: '', audio: 'tts:cook meals' },
+                    { text: 'sweep the floor', img: '', audio: 'tts:sweep the floor' },
+                    { text: 'set the table', img: '', audio: 'tts:set the table' },
+                    { text: 'clean the bathroom', img: '', audio: 'tts:clean the bathroom' }
+                ], 3, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:dishes', [
+                    { text: 'wash dishes', img: '', audio: 'tts:wash dishes' },
+                    { text: 'fold clothes', img: '', audio: 'tts:fold clothes' },
+                    { text: 'vacuum the floor', img: '', audio: 'tts:vacuum the floor' },
+                    { text: 'housework', img: '', audio: 'tts:housework' }
+                ], 0, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:cook', [
+                    { text: 'put away toys', img: '', audio: 'tts:put away toys' },
+                    { text: 'cook meals', img: '', audio: 'tts:cook meals' },
+                    { text: 'make the bed', img: '', audio: 'tts:make the bed' },
+                    { text: 'clean the bathroom', img: '', audio: 'tts:clean the bathroom' }
+                ], 1, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:table', [
+                    { text: 'sweep the floor', img: '', audio: 'tts:sweep the floor' },
+                    { text: 'wash dishes', img: '', audio: 'tts:wash dishes' },
+                    { text: 'set the table', img: '', audio: 'tts:set the table' },
+                    { text: 'fold clothes', img: '', audio: 'tts:fold clothes' }
+                ], 2, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:fold', [
+                    { text: 'vacuum the floor', img: '', audio: 'tts:vacuum the floor' },
+                    { text: 'housework', img: '', audio: 'tts:housework' },
+                    { text: 'cook meals', img: '', audio: 'tts:cook meals' },
+                    { text: 'fold clothes', img: '', audio: 'tts:fold clothes' }
+                ], 3, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:bed', [
+                    { text: 'make the bed', img: '', audio: 'tts:make the bed' },
+                    { text: 'set the table', img: '', audio: 'tts:set the table' },
+                    { text: 'clean the bathroom', img: '', audio: 'tts:clean the bathroom' },
+                    { text: 'wash dishes', img: '', audio: 'tts:wash dishes' }
+                ], 0, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                makeQ('Look at the picture! Listen and choose the matching word.', 'svg:toys', [
+                    { text: 'sweep the floor', img: '', audio: 'tts:sweep the floor' },
+                    { text: 'put away toys', img: '', audio: 'tts:put away toys' },
+                    { text: 'fold clothes', img: '', audio: 'tts:fold clothes' },
+                    { text: 'vacuum the floor', img: '', audio: 'tts:vacuum the floor' }
+                ], 1, 'Housework & Chores', 'tts:Look at the picture! Listen and choose the matching word.', true),
+
+                // ===== PART 2 (11–20): LISTEN TO QUESTION AUDIO -> CHOOSE FROM 4 PICTURES =====
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'housework', img: 'svg:housework', audio: '' },
+                    { text: 'cook meals', img: 'svg:cook', audio: '' },
+                    { text: 'make the bed', img: 'svg:bed', audio: '' },
+                    { text: 'put away toys', img: 'svg:toys', audio: '' }
+                ], 0, 'Housework & Chores', 'tts:housework', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'wash dishes', img: 'svg:dishes', audio: '' },
+                    { text: 'sweep the floor', img: 'svg:sweep', audio: '' },
+                    { text: 'set the table', img: 'svg:table', audio: '' },
+                    { text: 'fold clothes', img: 'svg:fold', audio: '' }
+                ], 1, 'Housework & Chores', 'tts:sweep the floor', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'clean the bathroom', img: 'svg:bathroom', audio: '' },
+                    { text: 'make the bed', img: 'svg:bed', audio: '' },
+                    { text: 'vacuum the floor', img: 'svg:vacuum', audio: '' },
+                    { text: 'cook meals', img: 'svg:cook', audio: '' }
+                ], 2, 'Housework & Chores', 'tts:vacuum the floor', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'sweep the floor', img: 'svg:sweep', audio: '' },
+                    { text: 'put away toys', img: 'svg:toys', audio: '' },
+                    { text: 'fold clothes', img: 'svg:fold', audio: '' },
+                    { text: 'clean the bathroom', img: 'svg:bathroom', audio: '' }
+                ], 3, 'Housework & Chores', 'tts:clean the bathroom', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'wash dishes', img: 'svg:dishes', audio: '' },
+                    { text: 'set the table', img: 'svg:table', audio: '' },
+                    { text: 'housework', img: 'svg:housework', audio: '' },
+                    { text: 'vacuum the floor', img: 'svg:vacuum', audio: '' }
+                ], 0, 'Housework & Chores', 'tts:wash dishes', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'make the bed', img: 'svg:bed', audio: '' },
+                    { text: 'cook meals', img: 'svg:cook', audio: '' },
+                    { text: 'clean the bathroom', img: 'svg:bathroom', audio: '' },
+                    { text: 'put away toys', img: 'svg:toys', audio: '' }
+                ], 1, 'Housework & Chores', 'tts:cook meals', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'wash dishes', img: 'svg:dishes', audio: '' },
+                    { text: 'fold clothes', img: 'svg:fold', audio: '' },
+                    { text: 'set the table', img: 'svg:table', audio: '' },
+                    { text: 'sweep the floor', img: 'svg:sweep', audio: '' }
+                ], 2, 'Housework & Chores', 'tts:set the table', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'housework', img: 'svg:housework', audio: '' },
+                    { text: 'cook meals', img: 'svg:cook', audio: '' },
+                    { text: 'make the bed', img: 'svg:bed', audio: '' },
+                    { text: 'fold clothes', img: 'svg:fold', audio: '' }
+                ], 3, 'Housework & Chores', 'tts:fold clothes', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'make the bed', img: 'svg:bed', audio: '' },
+                    { text: 'vacuum the floor', img: 'svg:vacuum', audio: '' },
+                    { text: 'set the table', img: 'svg:table', audio: '' },
+                    { text: 'wash dishes', img: 'svg:dishes', audio: '' }
+                ], 0, 'Housework & Chores', 'tts:make the bed', false),
+
+                makeQ('🔊 Listen to the audio and tap the matching picture!', '', [
+                    { text: 'clean the bathroom', img: 'svg:bathroom', audio: '' },
+                    { text: 'put away toys', img: 'svg:toys', audio: '' },
+                    { text: 'fold clothes', img: 'svg:fold', audio: '' },
+                    { text: 'cook meals', img: 'svg:cook', audio: '' }
+                ], 1, 'Housework & Chores', 'tts:put away toys', false)
+            ],
+            picture: [
+                makeQ('Which animal says "Moo" and gives milk?', 'sticker:🥛', [
+                    { text: 'Cow', img: 'sticker:🐮' },
+                    { text: 'Owl', img: 'sticker:🦉' },
+                    { text: 'Frog', img: 'sticker:🐸' },
+                    { text: 'Penguin', img: 'sticker:🐧' }
+                ], 0, 'Picture Match'),
+                makeQ('Find the planet with giant rings!', 'sticker:🚀', [
+                    { text: 'Saturn', img: 'sticker:🪐' },
+                    { text: 'Earth', img: 'sticker:🌍' },
+                    { text: 'Moon', img: 'sticker:🌙' },
+                    { text: 'Sun', img: 'sticker:☀️' }
+                ], 0, 'Picture Match'),
+                makeQ('Which one is a triangle?', '', [
+                    { text: 'Triangle', img: 'sticker:🔺' },
+                    { text: 'Red Circle', img: 'sticker:🔴' },
+                    { text: 'Blue Square', img: 'sticker:🔵' },
+                    { text: 'Star', img: 'sticker:⭐' }
+                ], 0, 'Picture Match'),
+                makeQ('Which breakfast food is stacked with syrup?', '', [
+                    { text: 'Pancakes', img: 'sticker:🥞' },
+                    { text: 'Toast', img: 'sticker:🍞' },
+                    { text: 'Cereal', img: 'sticker:🥣' },
+                    { text: 'Milk', img: 'sticker:🥛' }
+                ], 0, 'Picture Match')
+            ],
+            math: [
+                makeQ('What is 7 + 5?', 'sticker:➕', ['12', '11', '13', '10'], 0, 'Math Blitz'),
+                makeQ('What is 4 × 3?', 'sticker:✖️', ['12', '7', '16', '9'], 0, 'Math Blitz'),
+                makeQ('What is 20 − 8?', 'sticker:➖', ['12', '14', '10', '18'], 0, 'Math Blitz'),
+                makeQ('How many sides does a triangle have?', 'sticker:🔺', ['3', '4', '5', '6'], 0, 'Math Blitz')
+            ],
+            science: [
+                makeQ('What do plants need from the sky to grow?', 'sticker:🌱', [
+                    { text: 'Sunlight & Rain', img: 'sticker:☀️' },
+                    { text: 'Snowballs', img: 'sticker:❄️' },
+                    { text: 'Rockets', img: 'sticker:🚀' },
+                    { text: 'Magnets', img: 'sticker:🧲' }
+                ], 0, 'Science & Space'),
+                makeQ('Which state of matter is an ice cube?', 'sticker:❄️', ['Solid', 'Liquid', 'Gas', 'Plasma'], 0, 'Science & Space'),
+                makeQ('What planet do we live on?', 'sticker:🚀', [
+                    { text: 'Earth', img: 'sticker:🌍' },
+                    { text: 'Saturn', img: 'sticker:🪐' },
+                    { text: 'The Sun', img: 'sticker:☀️' },
+                    { text: 'The Moon', img: 'sticker:🌙' }
+                ], 0, 'Science & Space')
+            ]
+        };
+
+        // --- 9-Plate Menu Catalog ---
+        const FOOD_CATALOG = [
+            { id: 'toast', name: 'Toast', emoji: '🍞', basePrice: 12, stock: 0, maxStock: 5, level: 1, unlocked: true },
+            { id: 'cereal', name: 'Cereal', emoji: '🥣', basePrice: 18, stock: 0, maxStock: 5, level: 1, unlocked: true },
+            { id: 'yogurt', name: 'Yogurt', emoji: '🍨', basePrice: 28, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 35 },
+            { id: 'pancake', name: 'Pancakes', emoji: '🥞', basePrice: 42, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 85 },
+            { id: 'waffle', name: 'Waffle', emoji: '🧇', basePrice: 65, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 160 },
+            { id: 'sausage', name: 'Sausage', emoji: '🌭', basePrice: 95, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 280 },
+            { id: 'eggs', name: 'Bacon & Eggs', emoji: '🍳', basePrice: 140, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 450 },
+            { id: 'oj', name: 'Orange Juice', emoji: '🧃', basePrice: 210, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 700 },
+            { id: 'milk', name: 'Fresh Milk', emoji: '🥛', basePrice: 320, stock: 0, maxStock: 5, level: 1, unlocked: false, unlockCost: 1100 }
+        ];
+
+        // --- Blooket-Style Rounded-Square Cute SVG Critter Avatars ---
+        const BLOOKET_CRITTER_SVGS = {
+            goat: `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-sm">
+                <path d="M26 24 C20 12, 28 6, 34 18 Z" fill="#3F332B"/>
+                <path d="M74 24 C80 12, 72 6, 66 18 Z" fill="#3F332B"/>
+                <ellipse cx="14" cy="40" rx="10" ry="6" transform="rotate(-20 14 40)" fill="#C69C72"/>
+                <ellipse cx="86" cy="40" rx="10" ry="6" transform="rotate(20 86 40)" fill="#C69C72"/>
+                <rect x="16" y="20" width="68" height="68" rx="16" fill="#D9B38C"/>
+                <path d="M36 20 L50 38 L64 20 Z" fill="#B5895A"/>
+                <circle cx="34" cy="54" r="9" fill="#FFFFFF"/>
+                <circle cx="36" cy="54" r="5" fill="#1E293B"/>
+                <circle cx="38" cy="52" r="2" fill="#FFFFFF"/>
+                <circle cx="66" cy="54" r="9" fill="#FFFFFF"/>
+                <circle cx="64" cy="54" r="5" fill="#1E293B"/>
+                <circle cx="66" cy="52" r="2" fill="#FFFFFF"/>
+                <ellipse cx="50" cy="70" rx="16" ry="11" fill="#F2C6C2"/>
+                <path d="M44 68 Q50 74 56 68" stroke="#3F332B" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M43 88 L50 97 L57 88 Z" fill="#B5895A"/>
+            </svg>`,
+            cow: `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-sm">
+                <path d="M24 22 L18 10 L32 18 Z" fill="#CBD5E1"/>
+                <path d="M76 22 L82 10 L68 18 Z" fill="#CBD5E1"/>
+                <ellipse cx="13" cy="36" rx="9" ry="5" fill="#334155"/>
+                <ellipse cx="87" cy="36" rx="9" ry="5" fill="#334155"/>
+                <rect x="16" y="20" width="68" height="68" rx="16" fill="#475569"/>
+                <path d="M34 20 Q50 20 66 20 L62 64 L38 64 Z" fill="#E0F2FE"/>
+                <circle cx="34" cy="52" r="9" fill="#FFFFFF"/>
+                <circle cx="36" cy="52" r="5" fill="#0F172A"/>
+                <circle cx="38" cy="50" r="2" fill="#FFFFFF"/>
+                <circle cx="66" cy="52" r="9" fill="#FFFFFF"/>
+                <circle cx="64" cy="52" r="5" fill="#0F172A"/>
+                <circle cx="66" cy="50" r="2" fill="#FFFFFF"/>
+                <rect x="28" y="62" width="44" height="24" rx="12" fill="#F9A8D4"/>
+                <circle cx="42" cy="73" r="3.5" fill="#BE185D"/>
+                <circle cx="58" cy="73" r="3.5" fill="#BE185D"/>
+            </svg>`,
+            owl: `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-sm">
+                <path d="M16 42 Q50 14 84 42 L84 82 Q84 90 74 90 L26 90 Q16 90 16 82 Z" fill="#5C4033"/>
+                <path d="M24 38 L50 24 L76 38 L50 50 Z" fill="#8C6239"/>
+                <circle cx="36" cy="56" r="14" fill="#E2E8F0"/>
+                <circle cx="64" cy="56" r="14" fill="#E2E8F0"/>
+                <circle cx="36" cy="56" r="10" fill="#FACC15"/>
+                <circle cx="64" cy="56" r="10" fill="#FACC15"/>
+                <circle cx="36" cy="56" r="6" fill="#0F172A"/>
+                <circle cx="64" cy="56" r="6" fill="#0F172A"/>
+                <circle cx="38" cy="54" r="2" fill="#FFFFFF"/>
+                <circle cx="66" cy="54" r="2" fill="#FFFFFF"/>
+                <polygon points="44,66 56,66 50,78" fill="#F59E0B"/>
+            </svg>`,
+            fox: `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-sm">
+                <polygon points="18,30 24,8 42,24" fill="#EA580C"/>
+                <polygon points="82,30 76,8 58,24" fill="#EA580C"/>
+                <rect x="16" y="22" width="68" height="66" rx="16" fill="#F97316"/>
+                <path d="M16 58 Q36 58 50 74 Q64 58 84 58 L84 74 Q84 88 68 88 L32 88 Q16 88 16 74 Z" fill="#FFF7ED"/>
+                <circle cx="34" cy="52" r="8" fill="#FFFFFF"/>
+                <circle cx="35" cy="52" r="4.5" fill="#0F172A"/>
+                <circle cx="66" cy="52" r="8" fill="#FFFFFF"/>
+                <circle cx="65" cy="52" r="4.5" fill="#0F172A"/>
+                <circle cx="50" cy="70" r="5" fill="#1E293B"/>
+            </svg>`,
+            panda: `<svg viewBox="0 0 100 100" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-sm">
+                <circle cx="24" cy="22" r="11" fill="#1E293B"/>
+                <circle cx="76" cy="22" r="11" fill="#1E293B"/>
+                <rect x="16" y="20" width="68" height="68" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+                <ellipse cx="34" cy="52" rx="11" ry="13" transform="rotate(-15 34 52)" fill="#1E293B"/>
+                <ellipse cx="66" cy="52" rx="11" ry="13" transform="rotate(15 66 52)" fill="#1E293B"/>
+                <circle cx="35" cy="51" r="4.5" fill="#FFFFFF"/>
+                <circle cx="65" cy="51" r="4.5" fill="#FFFFFF"/>
+                <ellipse cx="50" cy="68" rx="6" ry="4" fill="#1E293B"/>
+            </svg>`
+        };
+        const CRITTER_KEYS = Object.keys(BLOOKET_CRITTER_SVGS);
+
+        // --- Application State ---
+        const state = {
+            role: 'gate',
+            roomCode: 'CAFE-101',
+            teacherPin: '1234',
+            kidLockEnabled: true,
+
+            studentId: 'stu_' + Math.random().toString(36).slice(2, 9),
+            studentName: '',
+            studentAvatar: '🦊',
+            roster: {},
+            rushHourUntil: 0,
+            simInterval: null,
+            prevRank: 1,
+
+            cash: 0,
+            servedCount: 0,
+            correctCount: 0,
+            answeredCount: 0,
+            streak: 0,
+
+            studioQuestions: [...PRESET_PACKS.housework],
+
+            foods: JSON.parse(JSON.stringify(FOOD_CATALOG)),
+            customers: [],
+            upgrades: {
+                restockEfficiencyLevel: 1,
+                patienceLevel: 1,
+                autoServer: false
+            },
+            cafeLevel: 1,
+            autoServeTimer: 0,
+            currentQuestion: null,
+            triviaAnswered: false,
+            triviaNextTimer: null,
+            stickerTarget: null
+        };
+
+        // --- Cafe Level Progression (Levels 1-10) ---
+        const CAFE_LEVEL_CONFIG = [
+            { level: 1, minServed: 0,   maxCustomers: 3,  maxLines: 1, maxQtyPerLine: 2 },
+            { level: 2, minServed: 4,   maxCustomers: 4,  maxLines: 2, maxQtyPerLine: 3 },
+            { level: 3, minServed: 10,  maxCustomers: 5,  maxLines: 2, maxQtyPerLine: 4 },
+            { level: 4, minServed: 18,  maxCustomers: 6,  maxLines: 3, maxQtyPerLine: 5 },
+            { level: 5, minServed: 28,  maxCustomers: 7,  maxLines: 3, maxQtyPerLine: 6 },
+            { level: 6, minServed: 40,  maxCustomers: 8,  maxLines: 4, maxQtyPerLine: 7 },
+            { level: 7, minServed: 55,  maxCustomers: 9,  maxLines: 4, maxQtyPerLine: 8 },
+            { level: 8, minServed: 72,  maxCustomers: 10, maxLines: 5, maxQtyPerLine: 9 },
+            { level: 9, minServed: 92,  maxCustomers: 10, maxLines: 5, maxQtyPerLine: 10 },
+            { level: 10, minServed: 115, maxCustomers: 10, maxLines: 6, maxQtyPerLine: 10 }
+        ];
+
+        function getCurrentCafeLevelSpec() {
+            let spec = CAFE_LEVEL_CONFIG[0];
+            for (const cfg of CAFE_LEVEL_CONFIG) {
+                if (state.servedCount >= cfg.minServed) {
+                    spec = cfg;
+                }
+            }
+            return spec;
+        }
+
+        function checkCafeLevelUp() {
+            const spec = getCurrentCafeLevelSpec();
+            if (spec.level > state.cafeLevel) {
+                state.cafeLevel = spec.level;
+                sfx.rankUp();
+                launchMiniConfetti();
+                while (state.customers.length < spec.maxCustomers) {
+                    spawnCustomer();
+                }
+            }
+        }
+
+        // --- Food Level 1-5 Payouts & Restock Efficiency Helpers ---
+        const FOOD_LEVEL_PRICE_MULTIPLIERS = [1, 2.5, 6, 15, 38];
+        const FOOD_LEVEL_UPGRADE_COSTS = [0, 30, 85, 220, 550];
+
+        function getFoodPlatePayout(food) {
+            const idx = Math.min(4, Math.max(0, (food.level || 1) - 1));
+            return Math.round(food.basePrice * FOOD_LEVEL_PRICE_MULTIPLIERS[idx]);
+        }
+
+        function getFoodRestockYield(food) {
+            const levelBonus = (food.level || 1) - 1;
+            const globalBoost = (state.upgrades.restockEfficiencyLevel || 1) - 1;
+            return 2 + levelBonus + globalBoost;
+        }
+
+        // --- Cached DOM Element References ---
+        const el = {
+            portalGate: document.getElementById('portal-gate'),
+            gateRoomBadge: document.getElementById('gate-room-badge'),
+            chooseStudentPortalBtn: document.getElementById('choose-student-portal-btn'),
+            chooseTeacherPortalBtn: document.getElementById('choose-teacher-portal-btn'),
+
+            teacherPortal: document.getElementById('teacher-portal'),
+            teacherRoomInput: document.getElementById('teacher-room-input'),
+            teacherPinInput: document.getElementById('teacher-pin-input'),
+            switchToStudentBtn: document.getElementById('switch-to-student-btn'),
+            teacherHomeBtn: document.getElementById('teacher-home-btn'),
+            teacherTabStudentCount: document.getElementById('teacher-tab-student-count'),
+            teacherTabQCount: document.getElementById('teacher-tab-q-count'),
+            kpiTotalCash: document.getElementById('kpi-total-cash'),
+            kpiActiveStudents: document.getElementById('kpi-active-students'),
+            kpiTotalServed: document.getElementById('kpi-total-served'),
+            kpiAvgAccuracy: document.getElementById('kpi-avg-accuracy'),
+            broadcastRushBtn: document.getElementById('broadcast-rush-btn'),
+            broadcastRushLabel: document.getElementById('broadcast-rush-label'),
+            simulateStudentsBtn: document.getElementById('simulate-students-btn'),
+            teacherSortSelect: document.getElementById('teacher-sort-select'),
+            exportCsvBtn: document.getElementById('export-csv-btn'),
+            resetLeaderboardBtn: document.getElementById('reset-leaderboard-btn'),
+            teacherLeaderboardList: document.getElementById('teacher-leaderboard-list'),
+
+            studioPresetLoader: document.getElementById('studio-preset-loader'),
+            studioAddQBtn: document.getElementById('studio-add-q-btn'),
+            exportJsonBtn: document.getElementById('export-json-btn'),
+            importJsonInput: document.getElementById('import-json-input'),
+            saveStudioBtn: document.getElementById('save-studio-btn'),
+            studioQuestionsList: document.getElementById('studio-questions-list'),
+
+            qrDeckSelect: document.getElementById('qr-deck-select'),
+            qrCardSubtitle: document.getElementById('qr-card-subtitle'),
+            qrCardRoom: document.getElementById('qr-card-room'),
+            qrCodeContainer: document.getElementById('qr-code-container'),
+            qrCapacityLabel: document.getElementById('qr-capacity-label'),
+            qrCapacityBar: document.getElementById('qr-capacity-bar'),
+            qrPhotoWarning: document.getElementById('qr-photo-warning'),
+            copyQrLinkBtn: document.getElementById('copy-qr-link-btn'),
+            copyQrLinkText: document.getElementById('copy-qr-link-text'),
+            printQrCardBtn: document.getElementById('print-qr-card-btn'),
+
+            studentCheckinScreen: document.getElementById('student-checkin-screen'),
+            checkinRoomLabel: document.getElementById('checkin-room-label'),
+            checkinDeckLabel: document.getElementById('checkin-deck-label'),
+            studentNameInput: document.getElementById('student-name-input'),
+            avatarPickerGrid: document.getElementById('avatar-picker-grid'),
+            studentStartCafeBtn: document.getElementById('student-start-cafe-btn'),
+            checkinTeacherLockBtn: document.getElementById('checkin-teacher-lock-btn'),
+
+            studentPortal: document.getElementById('student-portal'),
+            rushHourBanner: document.getElementById('rush-hour-banner'),
+            rushHourTimer: document.getElementById('rush-hour-timer'),
+            studentFullscreenBtn: document.getElementById('student-fullscreen-btn'),
+            hudStudentAvatar: document.getElementById('hud-student-avatar'),
+            hudStudentName: document.getElementById('hud-student-name'),
+            hudStudentRank: document.getElementById('hud-student-rank'),
+            hudRoomCode: document.getElementById('hud-room-code'),
+            hudServedCount: document.getElementById('hud-served-count'),
+            hudStreak: document.getElementById('hud-streak'),
+            hudCafeLevelBadge: document.getElementById('hud-cafe-level-badge'),
+            hudCafeXpBar: document.getElementById('hud-cafe-xp-bar'),
+            hudCafeLevelDesc: document.getElementById('hud-cafe-level-desc'),
+            hudAutoServerPill: document.getElementById('hud-auto-server-pill'),
+            serveAllReadyBtn: document.getElementById('serve-all-ready-btn'),
+            serveAllReadyLabel: document.getElementById('serve-all-ready-label'),
+            toggleEarningsSidebarBtn: document.getElementById('toggle-earnings-sidebar-btn'),
+            muteToggleBtn: document.getElementById('mute-toggle-btn'),
+            studentTeacherLockBtn: document.getElementById('student-teacher-lock-btn'),
+            hudCash: document.getElementById('hud-cash'),
+            customersGrid: document.getElementById('customers-grid'),
+            rightEdgeEarningsTab: document.getElementById('right-edge-earnings-tab'),
+            foodStationsGrid: document.getElementById('food-stations-grid'),
+            openRestockBtn: document.getElementById('open-restock-btn'),
+            openShopBtn: document.getElementById('open-shop-btn'),
+            kidsEarningsSidebar: document.getElementById('kids-earnings-sidebar'),
+            closeEarningsSidebarBtn: document.getElementById('close-earnings-sidebar-btn'),
+            studentSideLeaderboard: document.getElementById('student-side-leaderboard'),
+
+            restockModal: document.getElementById('restock-modal'),
+            closeRestockBtn: document.getElementById('close-restock-btn'),
+            triviaQImgWrap: document.getElementById('trivia-q-img-wrap'),
+            triviaQuestionText: document.getElementById('trivia-question-text'),
+            triviaOptionsGrid: document.getElementById('trivia-options-grid'),
+            triviaFeedback: document.getElementById('trivia-feedback'),
+
+            shopModal: document.getElementById('shop-modal'),
+            closeShopBtn: document.getElementById('close-shop-btn'),
+            upgradesList: document.getElementById('upgrades-list'),
+
+            stickerModal: document.getElementById('sticker-modal'),
+            closeStickerModalBtn: document.getElementById('close-sticker-modal-btn'),
+            stickerCategoryTabs: document.getElementById('sticker-category-tabs'),
+            stickerGrid: document.getElementById('sticker-grid'),
+
+            lightboxModal: document.getElementById('lightbox-modal'),
+            lightboxImg: document.getElementById('lightbox-img'),
+            closeLightboxBtn: document.getElementById('close-lightbox-btn'),
+
+            pinModal: document.getElementById('pin-modal'),
+            pinVerifyInput: document.getElementById('pin-verify-input'),
+            pinErrorMsg: document.getElementById('pin-error-msg'),
+            pinCancelBtn: document.getElementById('pin-cancel-btn'),
+            pinSubmitBtn: document.getElementById('pin-submit-btn')
+        };
+
+        // --- Classroom Multi-Tab & LocalStorage Sync ---
+        const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('critter_cafe_classroom_sync') : null;
+
+        function getRoomStorageKey() {
+            return `critter_cafe_room_${state.roomCode}`;
+        }
+
+        function persistRoomToStorage() {
+            try {
+                localStorage.setItem(getRoomStorageKey(), JSON.stringify({
+                    roster: state.roster,
+                    rushHourUntil: state.rushHourUntil
+                }));
+            } catch (e) {}
+        }
+
+        function loadRoomFromStorage() {
+            try {
+                const raw = localStorage.getItem(getRoomStorageKey());
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (data.roster) state.roster = data.roster;
+                if (data.rushHourUntil) state.rushHourUntil = data.rushHourUntil;
+            } catch (e) {}
+        }
+
+        function broadcastSync(msg) {
+            const payload = { ...msg, roomCode: state.roomCode };
+            persistRoomToStorage();
+            if (syncChannel) {
+                try { syncChannel.postMessage(payload); } catch (e) {}
+            }
+        }
+
+        function handleSyncMessage(msg) {
+            if (!msg || msg.roomCode !== state.roomCode) return;
+            if (msg.type === 'STUDENT_UPDATE' && msg.student) {
+                state.roster[msg.student.id] = msg.student;
+                persistRoomToStorage();
+                renderAllLeaderboards();
+            } else if (msg.type === 'RUSH_HOUR') {
+                state.rushHourUntil = msg.rushHourUntil || 0;
+            } else if (msg.type === 'RESET_ROSTER') {
+                state.roster = {};
+                persistRoomToStorage();
+                renderAllLeaderboards();
+            }
+        }
+
+        if (syncChannel) {
+            syncChannel.onmessage = (e) => handleSyncMessage(e.data);
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === getRoomStorageKey() && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.roster) {
+                        Object.assign(state.roster, data.roster);
+                        Object.keys(state.roster).forEach(id => {
+                            if (!data.roster[id]) delete state.roster[id];
+                        });
+                    }
+                    if (data.rushHourUntil) state.rushHourUntil = data.rushHourUntil;
+                    renderAllLeaderboards();
+                } catch (err) {}
+            }
+        });
+
+        function publishMyStudentProgress(cashDelta = 0) {
+            if (!state.studentName) return;
+            const entry = {
+                id: state.studentId,
+                name: state.studentName,
+                avatar: state.studentAvatar,
+                cash: state.cash,
+                served: state.servedCount,
+                correct: state.correctCount,
+                answered: state.answeredCount,
+                streak: state.streak,
+                lastSeen: Date.now(),
+                lastDelta: cashDelta
+            };
+            state.roster[state.studentId] = entry;
+            broadcastSync({ type: 'STUDENT_UPDATE', student: entry });
+            renderAllLeaderboards();
+        }
+
+        /**
+         * ============================================================================
+         * PORTAL ROUTING & KID-SAFE TEACHER PIN GATE
+         * ============================================================================
+         */
+        let pendingPinAction = null;
+
+        function requestTeacherAccess(onUnlocked) {
+            if (!state.kidLockEnabled) {
+                onUnlocked();
+                return;
+            }
+            pendingPinAction = onUnlocked;
+            el.pinVerifyInput.value = '';
+            el.pinErrorMsg.classList.add('hidden');
+            el.pinModal.classList.remove('hidden');
+            setTimeout(() => el.pinVerifyInput.focus(), 80);
+        }
+
+        el.pinCancelBtn.addEventListener('click', () => {
+            sfx.pop();
+            el.pinModal.classList.add('hidden');
+            pendingPinAction = null;
+        });
+
+        el.pinSubmitBtn.addEventListener('click', () => {
+            if (el.pinVerifyInput.value.trim() === state.teacherPin) {
+                sfx.correct();
+                el.pinModal.classList.add('hidden');
+                if (pendingPinAction) pendingPinAction();
+                pendingPinAction = null;
+            } else {
+                sfx.wrong();
+                el.pinErrorMsg.classList.remove('hidden');
+                el.pinVerifyInput.value = '';
+            }
+        });
+
+        el.pinVerifyInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') el.pinSubmitBtn.click();
+        });
+
+        function showPortal(targetRole) {
+            state.role = targetRole;
+            el.portalGate.classList.toggle('hidden', targetRole !== 'gate');
+            el.teacherPortal.classList.toggle('hidden', targetRole !== 'teacher');
+            el.studentCheckinScreen.classList.toggle('hidden', targetRole !== 'student-checkin');
+            el.studentPortal.classList.toggle('hidden', targetRole !== 'student');
+
+            if (targetRole === 'teacher') {
+                loadRoomFromStorage();
+                renderTeacherStudio();
+                renderQrCodeStation();
+                renderAllLeaderboards();
+            } else if (targetRole === 'student-checkin') {
+                el.checkinRoomLabel.textContent = state.roomCode;
+                el.checkinDeckLabel.textContent = `${state.studioQuestions.length} Questions Ready`;
+                renderAvatarPicker();
+            } else if (targetRole === 'student') {
+                loadRoomFromStorage();
+                renderStudentCafe();
+                renderAllLeaderboards();
+            }
+        }
+
+        el.chooseStudentPortalBtn.addEventListener('click', () => {
+            sfx.pop();
+            showPortal('student-checkin');
+        });
+
+        el.chooseTeacherPortalBtn.addEventListener('click', () => {
+            sfx.pop();
+            showPortal('teacher');
+        });
+
+        el.switchToStudentBtn.addEventListener('click', () => {
+            sfx.pop();
+            showPortal('student-checkin');
+        });
+
+        el.teacherHomeBtn.addEventListener('click', () => {
+            sfx.pop();
+            showPortal('gate');
+        });
+
+        el.checkinTeacherLockBtn.addEventListener('click', () => {
+            sfx.pop();
+            requestTeacherAccess(() => showPortal('teacher'));
+        });
+
+        el.studentTeacherLockBtn.addEventListener('click', () => {
+            sfx.pop();
+            requestTeacherAccess(() => showPortal('teacher'));
+        });
+
+        /**
+         * ============================================================================
+         * TEACHER PORTAL TABS, ROOM CODE, LIVE EARNINGS & SIMULATOR
+         * ============================================================================
+         */
+        document.querySelectorAll('.teacher-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                sfx.pop();
+                const tab = btn.dataset.teacherTab;
+                document.querySelectorAll('.teacher-tab-btn').forEach(b => {
+                    const active = b.dataset.teacherTab === tab;
+                    b.className = active
+                        ? 'teacher-tab-btn btn-juicy bg-amber-400 text-amber-950 border-2 border-amber-600 font-display font-bold px-4 py-2.5 rounded-2xl text-sm sm:text-base flex items-center gap-2'
+                        : 'teacher-tab-btn btn-juicy bg-white/15 hover:bg-white/25 text-white border-2 border-white/25 font-display font-bold px-4 py-2.5 rounded-2xl text-sm sm:text-base flex items-center gap-2';
+                });
+
+                document.getElementById('teacher-panel-earnings').classList.toggle('hidden', tab !== 'earnings');
+                document.getElementById('teacher-panel-studio').classList.toggle('hidden', tab !== 'studio');
+                document.getElementById('teacher-panel-qr').classList.toggle('hidden', tab !== 'qr');
+
+                if (tab === 'qr') renderQrCodeStation();
+                if (tab === 'studio') renderTeacherStudio();
+                if (tab === 'earnings') renderAllLeaderboards();
+            });
+        });
+
+        el.teacherRoomInput.addEventListener('input', (e) => {
+            state.roomCode = (e.target.value.trim().toUpperCase() || 'CAFE-101');
+            el.gateRoomBadge.textContent = state.roomCode;
+            loadRoomFromStorage();
+            renderAllLeaderboards();
+            renderQrCodeStation();
+        });
+
+        el.teacherPinInput.addEventListener('input', (e) => {
+            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+            e.target.value = val;
+            if (val.length === 4) state.teacherPin = val;
+        });
+
+        el.teacherSortSelect.addEventListener('change', () => {
+            sfx.pop();
+            renderAllLeaderboards();
+        });
+
+        el.broadcastRushBtn.addEventListener('click', () => {
+            sfx.rankUp();
+            state.rushHourUntil = Date.now() + 30000;
+            broadcastSync({ type: 'RUSH_HOUR', rushHourUntil: state.rushHourUntil });
+            el.broadcastRushLabel.textContent = '⚡ 2x Cash Rush Active (30s)!';
+            setTimeout(() => {
+                el.broadcastRushLabel.textContent = 'Launch 2x Cash Rush Hour! (30s)';
+            }, 30000);
+        });
+
+        el.resetLeaderboardBtn.addEventListener('click', () => {
+            sfx.wrong();
+            state.roster = {};
+            broadcastSync({ type: 'RESET_ROSTER' });
+            renderAllLeaderboards();
+        });
+
+        const DEMO_KIDS = [
+            { id: 'demo_maya', name: 'Maya', avatar: '🐼' },
+            { id: 'demo_leo', name: 'Leo', avatar: '🦁' },
+            { id: 'demo_zoe', name: 'Zoe', avatar: '🐸' },
+            { id: 'demo_noah', name: 'Noah', avatar: '🐧' },
+            { id: 'demo_ava', name: 'Ava', avatar: '🦄' }
+        ];
+
+        el.simulateStudentsBtn.addEventListener('click', () => {
+            sfx.pop();
+            if (state.simInterval) {
+                clearInterval(state.simInterval);
+                state.simInterval = null;
+                el.simulateStudentsBtn.innerHTML = '<span>🤖</span><span>Simulate Live Class Demo</span>';
+                return;
+            }
+
+            DEMO_KIDS.forEach(k => {
+                if (!state.roster[k.id]) {
+                    state.roster[k.id] = {
+                        ...k,
+                        cash: 25 + Math.floor(Math.random() * 45),
+                        served: 2,
+                        correct: 3,
+                        answered: 3,
+                        streak: 1,
+                        lastSeen: Date.now(),
+                        lastDelta: 0
+                    };
+                }
+            });
+            persistRoomToStorage();
+            renderAllLeaderboards();
+
+            el.simulateStudentsBtn.innerHTML = '<span>⏹️</span><span>Stop Live Demo</span>';
+            state.simInterval = setInterval(() => {
+                const kid = DEMO_KIDS[Math.floor(Math.random() * DEMO_KIDS.length)];
+                const cur = state.roster[kid.id] || { ...kid, cash: 20, served: 1, correct: 2, answered: 2, streak: 1 };
+                const earned = [15, 25, 30, 40][Math.floor(Math.random() * 4)];
+                const updated = {
+                    ...cur,
+                    cash: cur.cash + earned,
+                    served: cur.served + 1,
+                    correct: cur.correct + 1,
+                    answered: cur.answered + 1,
+                    streak: cur.streak + 1,
+                    lastSeen: Date.now(),
+                    lastDelta: earned
+                };
+                state.roster[kid.id] = updated;
+                broadcastSync({ type: 'STUDENT_UPDATE', student: updated });
+                renderAllLeaderboards();
+            }, 2400);
+        });
+
+        el.exportCsvBtn.addEventListener('click', () => {
+            sfx.cash();
+            const students = getSortedStudents('cash');
+            const rows = [
+                ['Rank', 'Student Name', 'Avatar', 'Cash Earned ($)', 'Customers Served', 'Trivia Correct', 'Trivia Answered', 'Accuracy (%)'],
+                ...students.map((s, idx) => {
+                    const acc = s.answered > 0 ? Math.round((s.correct / s.answered) * 100) : 100;
+                    return [idx + 1, `"${s.name.replace(/"/g, '""')}"`, s.avatar, s.cash, s.served, s.correct, s.answered, `${acc}%`];
+                })
+            ];
+            const csv = rows.map(r => r.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `CritterCafe_${state.roomCode}_Earnings.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        function getSortedStudents(sortBy = 'cash') {
+            const list = Object.values(state.roster);
+            return list.sort((a, b) => {
+                if (sortBy === 'accuracy') {
+                    const accA = a.answered > 0 ? a.correct / a.answered : 1;
+                    const accB = b.answered > 0 ? b.correct / b.answered : 1;
+                    return accB - accA || b.cash - a.cash;
+                }
+                if (sortBy === 'served') {
+                    return b.served - a.served || b.cash - a.cash;
+                }
+                return b.cash - a.cash || b.served - a.served;
+            });
+        }
+
+        function renderAllLeaderboards() {
+            const sortedByCash = getSortedStudents('cash');
+            const teacherSorted = getSortedStudents(el.teacherSortSelect ? el.teacherSortSelect.value : 'cash');
+
+            const totalCash = sortedByCash.reduce((sum, s) => sum + (s.cash || 0), 0);
+            const totalServed = sortedByCash.reduce((sum, s) => sum + (s.served || 0), 0);
+            const totalCorrect = sortedByCash.reduce((sum, s) => sum + (s.correct || 0), 0);
+            const totalAnswered = sortedByCash.reduce((sum, s) => sum + (s.answered || 0), 0);
+            const avgAcc = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 100;
+
+            el.kpiTotalCash.textContent = `$${totalCash.toLocaleString()}`;
+            el.kpiActiveStudents.textContent = sortedByCash.length;
+            el.kpiTotalServed.textContent = totalServed;
+            el.kpiAvgAccuracy.textContent = `${avgAcc}%`;
+            if (el.teacherTabStudentCount) {
+                el.teacherTabStudentCount.textContent = sortedByCash.length;
+            }
+
+            // Update Teacher Portal Leaderboard
+            if (teacherSorted.length === 0) {
+                el.teacherLeaderboardList.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 font-bold">
+                        No students joined yet! Display the QR Code or click <strong>Simulate Live Class Demo</strong> to test.
+                    </div>
+                `;
+            } else {
+                el.teacherLeaderboardList.innerHTML = teacherSorted.map((s, idx) => {
+                    const acc = s.answered > 0 ? Math.round((s.correct / s.answered) * 100) : 100;
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                    return `
+                        <div class="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="font-display font-bold text-xl w-9 text-center">${medal}</span>
+                                <span class="text-3xl">${escapeHtml(s.avatar || '🦊')}</span>
+                                <div class="min-w-0">
+                                    <div class="font-display font-bold text-lg text-slate-800 truncate">${escapeHtml(s.name)}</div>
+                                    <div class="text-xs font-bold text-slate-500">Served: ${s.served} • Accuracy: ${acc}%</div>
+                                </div>
+                            </div>
+                            <div class="font-display font-bold text-2xl text-emerald-600">$${(s.cash || 0).toLocaleString()}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Update Student Side Leaderboard & Rank Badge
+            const myIdx = sortedByCash.findIndex(s => s.id === state.studentId);
+            const myRank = myIdx >= 0 ? myIdx + 1 : 1;
+            if (myRank < state.prevRank && state.role === 'student') {
+                sfx.rankUp();
+            }
+            state.prevRank = myRank;
+            if (el.hudStudentRank) {
+                el.hudStudentRank.textContent = `#${myRank}`;
+            }
+
+            if (el.studentSideLeaderboard) {
+                el.studentSideLeaderboard.innerHTML = sortedByCash.map((s, idx) => {
+                    const isMe = s.id === state.studentId;
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                    return `
+                        <div class="p-2.5 rounded-2xl border-2 flex items-center justify-between gap-2 ${isMe ? 'bg-amber-100 border-amber-400' : 'bg-white border-slate-200'}">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="font-display font-bold text-sm w-6 text-center">${medal}</span>
+                                <span class="text-2xl">${escapeHtml(s.avatar || '🦊')}</span>
+                                <span class="font-display font-bold text-sm text-slate-800 truncate">${escapeHtml(s.name)}${isMe ? ' (You)' : ''}</span>
+                            </div>
+                            <span class="font-display font-bold text-base text-emerald-600 shrink-0">$${(s.cash || 0).toLocaleString()}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // --- Custom Illustrated SVG Art Cards for All 10 Housework Phrases ---
+        const CHORE_SVG_CARDS = {
+            housework: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#FEF3C7"/>
+                <polygon points="60,16 16,52 104,52" fill="#F97316"/>
+                <rect x="26" y="50" width="68" height="52" rx="6" fill="#FFFBEB" stroke="#F59E0B" stroke-width="3"/>
+                <rect x="50" y="70" width="20" height="32" rx="3" fill="#F59E0B"/>
+                <text x="36" y="68" font-size="16">🧹</text>
+                <text x="72" y="68" font-size="16">🧽</text>
+                <text x="53" y="42" font-size="16">✨</text>
+            </svg>`,
+            sweep: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#E0F2FE"/>
+                <rect x="12" y="92" width="96" height="14" rx="5" fill="#CBD5E1"/>
+                <line x1="76" y1="16" x2="46" y2="76" stroke="#92400E" stroke-width="7" stroke-linecap="round"/>
+                <polygon points="32,72 60,72 66,94 26,94" fill="#F59E0B" stroke="#B45309" stroke-width="2.5"/>
+                <circle cx="76" cy="90" r="4" fill="#94A3B8"/>
+                <circle cx="86" cy="92" r="3" fill="#94A3B8"/>
+                <text x="20" y="36" font-size="18">✨</text>
+            </svg>`,
+            vacuum: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#EDE9FE"/>
+                <rect x="12" y="94" width="96" height="12" rx="5" fill="#DDD6FE"/>
+                <ellipse cx="42" cy="80" rx="22" ry="15" fill="#7C3AED"/>
+                <circle cx="34" cy="88" r="8" fill="#1E293B"/>
+                <circle cx="54" cy="88" r="6" fill="#1E293B"/>
+                <path d="M56 72 Q82 54 78 30" stroke="#4C1D95" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <line x1="78" y1="30" x2="94" y2="90" stroke="#64748B" stroke-width="5" stroke-linecap="round"/>
+                <rect x="82" y="88" width="24" height="8" rx="3" fill="#4C1D95"/>
+            </svg>`,
+            bathroom: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#CFFAFE"/>
+                <path d="M22 64 H98 V78 C98 92 84 98 60 98 C36 98 22 92 22 78 Z" fill="#FFFFFF" stroke="#06B6D4" stroke-width="4"/>
+                <path d="M30 64 V34 C30 24 44 24 44 34" stroke="#64748B" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <circle cx="56" cy="52" r="10" fill="#A5F3FC" opacity="0.85"/>
+                <circle cx="72" cy="46" r="12" fill="#A5F3FC" opacity="0.85"/>
+                <circle cx="84" cy="56" r="8" fill="#A5F3FC" opacity="0.85"/>
+                <text x="68" y="34" font-size="18">🫧</text>
+            </svg>`,
+            dishes: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#DBEAFE"/>
+                <rect x="18" y="68" width="84" height="34" rx="8" fill="#94A3B8"/>
+                <ellipse cx="60" cy="64" rx="28" ry="22" fill="#FFFFFF" stroke="#3B82F6" stroke-width="4"/>
+                <ellipse cx="60" cy="64" rx="16" ry="12" fill="#EFF6FF"/>
+                <rect x="70" y="36" width="24" height="16" rx="5" fill="#FACC15" stroke="#CA8A04" stroke-width="2"/>
+                <text x="24" y="42" font-size="18">🫧</text>
+                <text x="80" y="30" font-size="16">✨</text>
+            </svg>`,
+            cook: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#FFEDD5"/>
+                <rect x="24" y="64" width="60" height="32" rx="8" fill="#334155"/>
+                <line x1="84" y1="74" x2="108" y2="66" stroke="#1E293B" stroke-width="7" stroke-linecap="round"/>
+                <ellipse cx="54" cy="64" rx="30" ry="8" fill="#64748B"/>
+                <circle cx="48" cy="62" r="9" fill="#FFFFFF"/>
+                <circle cx="48" cy="62" r="4" fill="#F59E0B"/>
+                <path d="M40 44 Q36 32 42 22" stroke="#F97316" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                <path d="M56 42 Q52 30 58 20" stroke="#F97316" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            </svg>`,
+            table: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#FEF9C3"/>
+                <rect x="14" y="30" width="92" height="60" rx="12" fill="#D97706"/>
+                <circle cx="60" cy="60" r="22" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="3"/>
+                <circle cx="60" cy="60" r="14" fill="#F8FAFC"/>
+                <line x1="28" y1="42" x2="28" y2="78" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+                <line x1="92" y1="42" x2="92" y2="78" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+                <circle cx="92" cy="46" r="6" fill="#E2E8F0"/>
+            </svg>`,
+            fold: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#FCE7F3"/>
+                <rect x="26" y="76" width="68" height="16" rx="6" fill="#3B82F6"/>
+                <rect x="30" y="60" width="60" height="16" rx="6" fill="#F43F5E"/>
+                <rect x="34" y="44" width="52" height="16" rx="6" fill="#10B981"/>
+                <path d="M44 34 L60 22 L76 34" stroke="#EC4899" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <text x="78" y="36" font-size="16">👕</text>
+            </svg>`,
+            bed: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#E0E7FF"/>
+                <rect x="18" y="34" width="84" height="28" rx="6" fill="#92400E"/>
+                <rect x="26" y="42" width="30" height="16" rx="5" fill="#FFFFFF"/>
+                <rect x="64" y="42" width="30" height="16" rx="5" fill="#FFFFFF"/>
+                <rect x="18" y="56" width="84" height="34" rx="6" fill="#6366F1"/>
+                <rect x="18" y="56" width="84" height="12" fill="#A5B4FC"/>
+                <rect x="18" y="86" width="10" height="14" fill="#78350F"/>
+                <rect x="92" y="86" width="10" height="14" fill="#78350F"/>
+            </svg>`,
+            toys: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                <rect width="120" height="120" rx="18" fill="#DCFCE7"/>
+                <rect x="24" y="58" width="72" height="44" rx="8" fill="#F59E0B" stroke="#B45309" stroke-width="3"/>
+                <text x="32" y="54" font-size="24">🧸</text>
+                <text x="64" y="54" font-size="22">🚗</text>
+                <circle cx="56" cy="30" r="10" fill="#EF4444"/>
+                <path d="M56 38 V52 M50 46 L56 52 L62 46" stroke="#16A34A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            </svg>`
+        };
+
+        function getVisualHtml(imgStr, sizeClass = 'w-12 h-12 text-3xl') {
+            if (!imgStr) return '';
+            if (imgStr.startsWith('svg:')) {
+                const key = imgStr.replace('svg:', '');
+                const svgMarkup = CHORE_SVG_CARDS[key] || CHORE_SVG_CARDS.housework;
+                return `<div class="${sizeClass} rounded-2xl overflow-hidden border-2 border-amber-300 bg-white shadow-sm shrink-0">${svgMarkup}</div>`;
+            }
+            if (imgStr.startsWith('sticker:')) {
+                const emoji = imgStr.replace('sticker:', '');
+                return `<div class="${sizeClass} rounded-xl bg-amber-50 border-2 border-amber-300 flex items-center justify-center shrink-0">${emoji}</div>`;
+            }
+            return `<img src="${escapeHtml(imgStr)}" alt="Visual" class="${sizeClass} rounded-xl object-cover border-2 border-slate-300 shrink-0" onerror="this.style.display='none'">`;
+        }
+
+        function renderTeacherStudio() {
+            el.teacherTabQCount.textContent = `${state.studioQuestions.length} Qs`;
+            el.studioQuestionsList.innerHTML = state.studioQuestions.map((item, qIdx) => {
+                const qHasAudio = Boolean(item.qAudio);
+                const isRecordingQ = activeRecordingTarget && activeRecordingTarget.qIdx === qIdx && activeRecordingTarget.oIdx === -1;
+
+                const optionsHtml = item.options.map((opt, oIdx) => {
+                    const isCorrect = item.correctIndex === oIdx;
+                    const optHasAudio = Boolean(opt.audio);
+                    const isRecordingOpt = activeRecordingTarget && activeRecordingTarget.qIdx === qIdx && activeRecordingTarget.oIdx === oIdx;
+                    return `
+                        <div class="p-3 rounded-2xl border-2 ${isCorrect ? 'bg-emerald-50 border-emerald-400' : 'bg-slate-50 border-slate-200'} space-y-2">
+                            <div class="flex flex-wrap items-center justify-between gap-1.5">
+                                <button type="button" data-action="set-correct" data-q="${qIdx}" data-o="${oIdx}" class="text-xs font-black px-2.5 py-1 rounded-lg ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'}">
+                                    ${isCorrect ? '✓ Correct Answer' : `Option ${oIdx + 1}`}
+                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button type="button" data-action="set-tts-audio" data-q="${qIdx}" data-o="${oIdx}" class="${optHasAudio ? 'bg-indigo-600 text-white' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-900'} text-xs font-extrabold px-2 py-1 rounded-lg" title="Auto-Speak Option Text">🔊 TTS</button>
+                                    <button type="button" data-action="record-audio" data-q="${qIdx}" data-o="${oIdx}" class="${isRecordingOpt ? 'bg-rose-600 text-white animate-pulse' : 'bg-rose-100 hover:bg-rose-200 text-rose-900'} text-xs font-extrabold px-2 py-1 rounded-lg" title="Record Teacher Voice">
+                                        ${isRecordingOpt ? '⏹ Stop' : '🎤'}
+                                    </button>
+                                    ${optHasAudio ? `<button type="button" data-action="test-audio" data-q="${qIdx}" data-o="${oIdx}" class="bg-emerald-500 text-white text-xs font-extrabold px-2 py-1 rounded-lg" title="Listen">▶</button>` : ''}
+                                    <button type="button" data-action="pick-sticker" data-q="${qIdx}" data-o="${oIdx}" class="bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-extrabold px-2 py-1 rounded-lg" title="Pick Sticker">🦄</button>
+                                    <label class="bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-extrabold px-2 py-1 rounded-lg cursor-pointer" title="Upload iPad Photo">
+                                        📷
+                                        <input type="file" accept="image/*" data-action="upload-photo" data-q="${qIdx}" data-o="${oIdx}" class="hidden">
+                                    </label>
+                                    ${(opt.img || optHasAudio) ? `<button type="button" data-action="clear-media" data-q="${qIdx}" data-o="${oIdx}" class="bg-slate-200 text-slate-700 text-xs font-extrabold px-1.5 py-1 rounded-lg" title="Clear Media">✕</button>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${renderVisualBadge(opt.img, 'w-11 h-11 text-2xl')}
+                                <input type="text" data-action="edit-opt-text" data-q="${qIdx}" data-o="${oIdx}" value="${escapeHtml(opt.text)}" placeholder="Word / phrase (used for TTS audio)..." class="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold">
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="bg-white rounded-[24px] border-4 border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="font-display font-bold text-lg text-purple-700">Question #${qIdx + 1}</span>
+                                <label class="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-xl px-2.5 py-1 text-xs font-extrabold text-indigo-900 cursor-pointer">
+                                    <input type="checkbox" data-action="toggle-hide-opt-text" data-q="${qIdx}" ${item.hideOptionText ? 'checked' : ''}>
+                                    <span>Audio-Only Options (Hide Text for Listening)</span>
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <button type="button" data-action="set-tts-audio" data-q="${qIdx}" data-o="-1" class="${qHasAudio ? 'bg-indigo-600 text-white' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-950'} text-xs font-extrabold px-2.5 py-1.5 rounded-xl">🔊 Question TTS</button>
+                                <button type="button" data-action="record-audio" data-q="${qIdx}" data-o="-1" class="${isRecordingQ ? 'bg-rose-600 text-white animate-pulse' : 'bg-rose-100 hover:bg-rose-200 text-rose-950'} text-xs font-extrabold px-2.5 py-1.5 rounded-xl">
+                                    ${isRecordingQ ? '⏹ Stop Rec' : '🎤 Record Voice'}
+                                </button>
+                                ${qHasAudio ? `<button type="button" data-action="test-audio" data-q="${qIdx}" data-o="-1" class="bg-emerald-500 text-white text-xs font-extrabold px-2.5 py-1.5 rounded-xl">▶ Play Q</button>` : ''}
+                                <button type="button" data-action="pick-sticker" data-q="${qIdx}" data-o="-1" class="bg-amber-100 hover:bg-amber-200 text-amber-950 text-xs font-extrabold px-3 py-1.5 rounded-xl">🦄 Sticker</button>
+                                <label class="bg-sky-100 hover:bg-sky-200 text-sky-950 text-xs font-extrabold px-3 py-1.5 rounded-xl cursor-pointer">
+                                    📷 Photo
+                                    <input type="file" accept="image/*" data-action="upload-photo" data-q="${qIdx}" data-o="-1" class="hidden">
+                                </label>
+                                ${(item.qImg || qHasAudio) ? `<button type="button" data-action="clear-media" data-q="${qIdx}" data-o="-1" class="bg-slate-200 text-slate-700 text-xs font-extrabold px-2.5 py-1.5 rounded-xl">Clear Media</button>` : ''}
+                                <button type="button" data-action="delete-q" data-q="${qIdx}" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl">Delete</button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            ${renderVisualBadge(item.qImg, 'w-14 h-14 text-3xl')}
+                            <input type="text" data-action="edit-q-text" data-q="${qIdx}" value="${escapeHtml(item.q)}" placeholder="Type question prompt or spoken word..." class="w-full bg-purple-50/50 border-2 border-purple-200 rounded-2xl px-4 py-3 font-display font-bold text-lg text-slate-800">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            ${optionsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderVisualBadge(imgStr, sizeClass = 'w-12 h-12 text-3xl') {
+            return getVisualHtml(imgStr, sizeClass);
+        }
+
+        async function toggleVoiceRecording(qIdx, oIdx) {
+            if (activeMediaRecorder && activeMediaRecorder.state === 'recording') {
+                activeMediaRecorder.stop();
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                sfx.wrong();
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                activeAudioChunks = [];
+                activeRecordingTarget = { qIdx, oIdx };
+                const recorder = new MediaRecorder(stream);
+                activeMediaRecorder = recorder;
+
+                recorder.ondataavailable = (ev) => {
+                    if (ev.data.size > 0) activeAudioChunks.push(ev.data);
+                };
+
+                recorder.onstop = () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    const blob = new Blob(activeAudioChunks, { type: recorder.mimeType || 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const dataUrl = reader.result;
+                        if (oIdx === -1) state.studioQuestions[qIdx].qAudio = dataUrl;
+                        else state.studioQuestions[qIdx].options[oIdx].audio = dataUrl;
+                        activeRecordingTarget = null;
+                        activeMediaRecorder = null;
+                        sfx.correct();
+                        renderTeacherStudio();
+                    };
+                    reader.readAsDataURL(blob);
+                };
+
+                recorder.start();
+                renderTeacherStudio();
+            } catch (err) {
+                activeRecordingTarget = null;
+                sfx.wrong();
+            }
+        }
+
+        el.studioQuestionsList.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const qIdx = parseInt(btn.dataset.q, 10);
+            const oIdx = parseInt(btn.dataset.o, 10);
+
+            if (action === 'set-correct') {
+                sfx.pop();
+                state.studioQuestions[qIdx].correctIndex = oIdx;
+                renderTeacherStudio();
+            } else if (action === 'set-tts-audio') {
+                sfx.correct();
+                if (oIdx === -1) {
+                    const phrase = state.studioQuestions[qIdx].q || 'Listen carefully';
+                    state.studioQuestions[qIdx].qAudio = `tts:${phrase}`;
+                    playAudioClip(state.studioQuestions[qIdx].qAudio, phrase);
+                } else {
+                    const phrase = state.studioQuestions[qIdx].options[oIdx].text || `Option ${oIdx + 1}`;
+                    state.studioQuestions[qIdx].options[oIdx].audio = `tts:${phrase}`;
+                    playAudioClip(state.studioQuestions[qIdx].options[oIdx].audio, phrase);
+                }
+                renderTeacherStudio();
+            } else if (action === 'record-audio') {
+                toggleVoiceRecording(qIdx, oIdx);
+            } else if (action === 'test-audio') {
+                if (oIdx === -1) {
+                    playAudioClip(state.studioQuestions[qIdx].qAudio, state.studioQuestions[qIdx].q);
+                } else {
+                    playAudioClip(state.studioQuestions[qIdx].options[oIdx].audio, state.studioQuestions[qIdx].options[oIdx].text);
+                }
+            } else if (action === 'clear-media') {
+                sfx.pop();
+                if (oIdx === -1) {
+                    state.studioQuestions[qIdx].qImg = '';
+                    state.studioQuestions[qIdx].qAudio = '';
+                } else {
+                    state.studioQuestions[qIdx].options[oIdx].img = '';
+                    state.studioQuestions[qIdx].options[oIdx].audio = '';
+                }
+                renderTeacherStudio();
+            } else if (action === 'delete-q') {
+                sfx.wrong();
+                if (state.studioQuestions.length > 1) {
+                    state.studioQuestions.splice(qIdx, 1);
+                    renderTeacherStudio();
+                }
+            } else if (action === 'pick-sticker') {
+                sfx.pop();
+                state.stickerTarget = { qIdx, oIdx };
+                openStickerPicker();
+            }
+        });
+
+        el.studioQuestionsList.addEventListener('input', (e) => {
+            const target = e.target;
+            const action = target.dataset.action;
+            const qIdx = parseInt(target.dataset.q, 10);
+            const oIdx = parseInt(target.dataset.o, 10);
+
+            if (action === 'edit-q-text') {
+                state.studioQuestions[qIdx].q = target.value;
+                if (state.studioQuestions[qIdx].qAudio?.startsWith('tts:')) {
+                    state.studioQuestions[qIdx].qAudio = `tts:${target.value}`;
+                }
+            } else if (action === 'edit-opt-text') {
+                state.studioQuestions[qIdx].options[oIdx].text = target.value;
+                if (state.studioQuestions[qIdx].options[oIdx].audio?.startsWith('tts:')) {
+                    state.studioQuestions[qIdx].options[oIdx].audio = `tts:${target.value}`;
+                }
+            }
+        });
+
+        el.studioQuestionsList.addEventListener('change', (e) => {
+            const target = e.target;
+            const action = target.dataset.action;
+            const qIdx = parseInt(target.dataset.q, 10);
+            const oIdx = parseInt(target.dataset.o, 10);
+
+            if (action === 'toggle-hide-opt-text') {
+                state.studioQuestions[qIdx].hideOptionText = target.checked;
+                renderTeacherStudio();
+                return;
+            }
+            if (action === 'upload-photo' && target.files?.[0]) {
+                compressPhotoFile(target.files[0], (dataUrl) => {
+                    if (oIdx === -1) state.studioQuestions[qIdx].qImg = dataUrl;
+                    else state.studioQuestions[qIdx].options[oIdx].img = dataUrl;
+                    renderTeacherStudio();
+                });
+            }
+        });
+
+        function compressPhotoFile(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxDim = 420;
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    callback(canvas.toDataURL('image/jpeg', 0.75));
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        el.studioAddQBtn.addEventListener('click', () => {
+            sfx.pop();
+            state.studioQuestions.push(makeQ('New Question?', '', ['Answer A', 'Answer B', 'Answer C', 'Answer D'], 0));
+            renderTeacherStudio();
+        });
+
+        el.studioPresetLoader.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            sfx.correct();
+            if (val === 'mixed') {
+                state.studioQuestions = [...PRESET_PACKS.housework, ...PRESET_PACKS.picture, ...PRESET_PACKS.math, ...PRESET_PACKS.science];
+            } else if (PRESET_PACKS[val]) {
+                state.studioQuestions = JSON.parse(JSON.stringify(PRESET_PACKS[val]));
+            }
+            e.target.value = '';
+            renderTeacherStudio();
+        });
+
+        el.saveStudioBtn.addEventListener('click', () => {
+            sfx.correct();
+            try { localStorage.setItem('critter_cafe_studio_deck', JSON.stringify(state.studioQuestions)); } catch (e) {}
+            el.saveStudioBtn.textContent = 'Saved! ✓';
+            setTimeout(() => { el.saveStudioBtn.textContent = '✓ Save Deck'; }, 1500);
+        });
+
+        el.exportJsonBtn.addEventListener('click', () => {
+            sfx.cash();
+            const blob = new Blob([JSON.stringify(state.studioQuestions, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'CritterCafe_Questions.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        el.importJsonInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const parsed = JSON.parse(ev.target.result);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        state.studioQuestions = parsed;
+                        sfx.correct();
+                        renderTeacherStudio();
+                    }
+                } catch (err) { sfx.wrong(); }
+            };
+            reader.readAsText(file);
+        });
+
+        // Sticker Picker Modal
+        function openStickerPicker() {
+            const cats = Object.keys(STICKER_CATEGORIES);
+            el.stickerCategoryTabs.innerHTML = cats.map((c, idx) => `
+                <button type="button" data-cat="${c}" class="sticker-cat-tab px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap ${idx === 0 ? 'bg-amber-400 text-amber-950' : 'bg-slate-100 text-slate-600'}">
+                    ${c}
+                </button>
+            `).join('');
+            renderStickerGrid(cats[0]);
+            el.stickerModal.classList.remove('hidden');
+        }
+
+        function renderStickerGrid(cat) {
+            const list = STICKER_CATEGORIES[cat] || [];
+            el.stickerGrid.innerHTML = list.map(emoji => `
+                <button type="button" data-sticker="${emoji}" class="btn-juicy bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-2xl p-3 text-3xl flex items-center justify-center">
+                    ${emoji}
+                </button>
+            `).join('');
+        }
+
+        el.stickerCategoryTabs.addEventListener('click', (e) => {
+            const tab = e.target.closest('.sticker-cat-tab');
+            if (!tab) return;
+            sfx.pop();
+            document.querySelectorAll('.sticker-cat-tab').forEach(t => {
+                t.className = t === tab
+                    ? 'sticker-cat-tab px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap bg-amber-400 text-amber-950'
+                    : 'sticker-cat-tab px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap bg-slate-100 text-slate-600';
+            });
+            renderStickerGrid(tab.dataset.cat);
+        });
+
+        el.stickerGrid.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-sticker]');
+            if (!btn || !state.stickerTarget) return;
+            sfx.correct();
+            const val = 'sticker:' + btn.dataset.sticker;
+            const { qIdx, oIdx } = state.stickerTarget;
+            if (oIdx === -1) state.studioQuestions[qIdx].qImg = val;
+            else state.studioQuestions[qIdx].options[oIdx].img = val;
+            el.stickerModal.classList.add('hidden');
+            renderTeacherStudio();
+        });
+
+        el.closeStickerModalBtn.addEventListener('click', () => {
+            sfx.pop();
+            el.stickerModal.classList.add('hidden');
+        });
+
+        /**
+         * ============================================================================
+         * QR CODE CLASSROOM SHARING & INCOMING STUDENT QR ROUTER
+         * ============================================================================
+         */
+        let currentShareUrl = '';
+
+        function compressPayload(str) {
+            if (typeof LZString !== 'undefined' && LZString.compressToEncodedURIComponent) {
+                return 'L_' + LZString.compressToEncodedURIComponent(str);
+            }
+            return 'B_' + btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function decompressPayload(encoded) {
+            if (!encoded) return null;
+            if (encoded.startsWith('L_') && typeof LZString !== 'undefined' && LZString.decompressFromEncodedURIComponent) {
+                return LZString.decompressFromEncodedURIComponent(encoded.slice(2));
+            }
+            if (encoded.startsWith('B_')) {
+                return decodeURIComponent(escape(atob(encoded.slice(2))));
+            }
+            return null;
+        }
+
+        function getDeckForQr(deckKey) {
+            if (deckKey === 'housework') return { title: 'Housework & Chores Audio Pack', questions: PRESET_PACKS.housework };
+            if (deckKey === 'picture') return { title: 'Picture Match Pack', questions: PRESET_PACKS.picture };
+            if (deckKey === 'math') return { title: 'Math Blitz Pack', questions: PRESET_PACKS.math };
+            if (deckKey === 'science') return { title: 'Science & Space Pack', questions: PRESET_PACKS.science };
+            if (deckKey === 'mixed') {
+                return { title: 'All Mix Pack', questions: [...PRESET_PACKS.housework, ...PRESET_PACKS.picture, ...PRESET_PACKS.math, ...PRESET_PACKS.science] };
+            }
+            return { title: 'Teacher Class Set', questions: state.studioQuestions };
+        }
+
+        function renderQrCodeStation() {
+            const deckKey = el.qrDeckSelect.value;
+            const deck = getDeckForQr(deckKey);
+            let strippedPhotos = false;
+
+            const compactQuestions = deck.questions.map(item => {
+                let qImg = item.qImg || '';
+                if (qImg.startsWith('data:image/')) { strippedPhotos = true; qImg = 'sticker:🖼️'; }
+                let qAud = item.qAudio || '';
+                if (qAud.startsWith('data:audio/')) { strippedPhotos = true; qAud = `tts:${item.q || ''}`; }
+
+                const compactOpts = item.options.map(opt => {
+                    let oImg = opt.img || '';
+                    if (oImg.startsWith('data:image/')) { strippedPhotos = true; oImg = 'sticker:🖼️'; }
+                    let oAud = opt.audio || '';
+                    if (oAud.startsWith('data:audio/')) { strippedPhotos = true; oAud = `tts:${opt.text || ''}`; }
+                    return [opt.text || '', oImg, oAud];
+                });
+                return [item.q || '', qImg, compactOpts, item.correctIndex || 0, qAud, item.hideOptionText ? 1 : 0];
+            });
+
+            const payload = JSON.stringify([deck.title, state.roomCode, compactQuestions]);
+            const compressed = compressPayload(payload);
+            const baseUrl = window.location.href.split('#')[0];
+            currentShareUrl = `${baseUrl}#play=${compressed}`;
+
+            el.qrCardSubtitle.textContent = `${deck.title} (${compactQuestions.length} Qs)`;
+            el.qrCardRoom.textContent = `ROOM: ${state.roomCode}`;
+
+            const len = currentShareUrl.length;
+            const pct = Math.min(100, Math.round((len / 1800) * 100));
+            el.qrCapacityBar.style.width = `${Math.max(12, pct)}%`;
+            if (len <= 1200) {
+                el.qrCapacityBar.className = 'h-full bg-emerald-500 rounded-full transition-all';
+                el.qrCapacityLabel.textContent = `Optimal Scanability (${len} chars)`;
+            } else {
+                el.qrCapacityBar.className = 'h-full bg-amber-500 rounded-full transition-all';
+                el.qrCapacityLabel.textContent = `Medium Density (${len} chars)`;
+            }
+            el.qrPhotoWarning.classList.toggle('hidden', !strippedPhotos);
+
+            el.qrCodeContainer.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(el.qrCodeContainer, {
+                    text: currentShareUrl,
+                    width: 240,
+                    height: 240,
+                    colorDark: '#0F172A',
+                    colorLight: '#FFFFFF',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }
+
+        el.qrDeckSelect.addEventListener('change', () => {
+            sfx.pop();
+            renderQrCodeStation();
+        });
+
+        el.copyQrLinkBtn.addEventListener('click', () => {
+            sfx.correct();
+            const ta = document.createElement('textarea');
+            ta.value = currentShareUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            el.copyQrLinkText.textContent = 'Copied Join Link! ✓';
+            setTimeout(() => { el.copyQrLinkText.textContent = 'Copy Student Join Link'; }, 2000);
+        });
+
+        el.printQrCardBtn.addEventListener('click', () => {
+            sfx.pop();
+            window.print();
+        });
+
+        function checkIncomingQrHash() {
+            const hash = window.location.hash || '';
+            if (!hash.startsWith('#play=')) return false;
+            try {
+                const decoded = decompressPayload(hash.slice(6));
+                if (!decoded) return false;
+                const [deckTitle, sharedRoom, compactQuestions] = JSON.parse(decoded);
+                if (!Array.isArray(compactQuestions) || compactQuestions.length === 0) return false;
+
+                state.studioQuestions = compactQuestions.map(qArr => {
+                    const [qText, qImg, optsArr, correctIdx, qAud, hideOpt] = qArr;
+                    return makeQ(
+                        qText,
+                        qImg,
+                        optsArr.map(o => ({ text: o[0] || '', img: o[1] || '', audio: o[2] || '' })),
+                        correctIdx,
+                        deckTitle,
+                        qAud || '',
+                        Boolean(hideOpt)
+                    );
+                });
+                state.roomCode = (sharedRoom || 'CAFE-101').toUpperCase();
+                state.kidLockEnabled = true;
+
+                showPortal('student-checkin');
+                el.checkinDeckLabel.textContent = `${deckTitle} (${state.studioQuestions.length} Qs)`;
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /**
+         * ============================================================================
+         * STUDENT CHECK-IN & CRITTER CAFE GAMEPLAY ENGINE
+         * ============================================================================
+         */
+        function renderAvatarPicker() {
+            el.avatarPickerGrid.innerHTML = STUDENT_AVATARS.map(av => {
+                const selected = state.studentAvatar === av.emoji;
+                return `
+                    <button type="button" data-avatar="${av.emoji}" class="btn-juicy rounded-2xl p-2.5 border-3 flex flex-col items-center justify-center ${selected ? 'bg-amber-300 border-amber-600 scale-105' : 'bg-slate-50 border-slate-200 hover:bg-amber-50'}">
+                        <span class="text-3xl sm:text-4xl">${av.emoji}</span>
+                        <span class="text-[11px] font-extrabold text-slate-700 mt-0.5">${av.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        el.avatarPickerGrid.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-avatar]');
+            if (!btn) return;
+            sfx.pop();
+            state.studentAvatar = btn.dataset.avatar;
+            renderAvatarPicker();
+        });
+
+        el.studentStartCafeBtn.addEventListener('click', () => {
+            const rawName = el.studentNameInput.value.trim();
+            state.studentName = rawName || `Chef ${STUDENT_AVATARS.find(a => a.emoji === state.studentAvatar)?.name || 'Fox'}`;
+            sfx.correct();
+
+            state.cash = 0;
+            state.servedCount = 0;
+            state.correctCount = 0;
+            state.answeredCount = 0;
+            state.streak = 0;
+            state.foods = JSON.parse(JSON.stringify(FOOD_CATALOG));
+            state.foods[0].stock = 3;
+            state.foods[1].stock = 3;
+            state.upgrades = { restockEfficiencyLevel: 1, patienceLevel: 1, autoServer: false };
+            state.cafeLevel = 1;
+            state.autoServeTimer = 0;
+            state.customers = [];
+
+            el.hudStudentAvatar.textContent = state.studentAvatar;
+            el.hudStudentName.textContent = state.studentName;
+            el.hudRoomCode.textContent = state.roomCode;
+
+            const startSpec = getCurrentCafeLevelSpec();
+            for (let i = 0; i < startSpec.maxCustomers; i++) {
+                spawnCustomer();
+            }
+            showPortal('student');
+            publishMyStudentProgress(0);
+        });
+
+        function spawnCustomer() {
+            const spec = getCurrentCafeLevelSpec();
+            if (state.customers.length >= spec.maxCustomers) return;
+
+            const unlockedFoods = state.foods.filter(f => f.unlocked);
+            const shuffledFoods = [...unlockedFoods].sort(() => Math.random() - 0.5);
+
+            const maxLinesAllowed = Math.min(spec.maxLines, shuffledFoods.length);
+            const lineCount = 1 + Math.floor(Math.random() * maxLinesAllowed);
+
+            const orders = [];
+            for (let i = 0; i < lineCount; i++) {
+                const food = shuffledFoods[i];
+                const qty = 1 + Math.floor(Math.random() * spec.maxQtyPerLine);
+                orders.push({ foodId: food.id, qty });
+            }
+
+            const maxPatience = 28 + (state.upgrades.patienceLevel - 1) * 6;
+            const critterKey = CRITTER_KEYS[Math.floor(Math.random() * CRITTER_KEYS.length)];
+
+            state.customers.push({
+                id: 'cust_' + Math.random().toString(36).slice(2, 8),
+                critterKey,
+                orders,
+                patience: maxPatience,
+                maxPatience
+            });
+        }
+
+        function serveFood(foodId, specificCustomerId = null, silent = false) {
+            const food = state.foods.find(f => f.id === foodId);
+            if (!food || !food.unlocked) return false;
+
+            if (food.stock <= 0) {
+                if (!silent) {
+                    sfx.wrong();
+                    openRestockTrivia();
+                }
+                return false;
+            }
+
+            const matching = state.customers
+                .filter(c => c.orders.some(o => o.foodId === foodId && o.qty > 0) && (!specificCustomerId || c.id === specificCustomerId))
+                .sort((a, b) => a.patience - b.patience);
+
+            if (matching.length === 0) {
+                if (!silent) sfx.pop();
+                return false;
+            }
+
+            const targetCust = matching[0];
+            const orderLine = targetCust.orders.find(o => o.foodId === foodId && o.qty > 0);
+            if (!orderLine) return false;
+
+            const serveCount = Math.min(food.stock, orderLine.qty);
+            food.stock -= serveCount;
+            orderLine.qty -= serveCount;
+            targetCust.orders = targetCust.orders.filter(o => o.qty > 0);
+
+            const isRush = Date.now() < state.rushHourUntil;
+            const platePayout = getFoodPlatePayout(food);
+            const earned = Math.round(platePayout * serveCount * (isRush ? 2 : 1));
+
+            state.cash += earned;
+            state.streak += 1;
+
+            if (targetCust.orders.length === 0) {
+                state.customers = state.customers.filter(c => c.id !== targetCust.id);
+                state.servedCount += 1;
+                checkCafeLevelUp();
+                spawnCustomer();
+            }
+
+            if (!silent) {
+                sfx.cash();
+                launchMiniConfetti();
+            }
+            publishMyStudentProgress(earned);
+            renderStudentCafe();
+            return true;
+        }
+
+        function serveAllReadyCustomers() {
+            let totalPlatesServed = 0;
+            const customerSnapshot = [...state.customers];
+            customerSnapshot.forEach(cust => {
+                const orderSnapshot = [...cust.orders];
+                orderSnapshot.forEach(ord => {
+                    const food = state.foods.find(f => f.id === ord.foodId);
+                    if (food && food.unlocked && food.stock > 0 && ord.qty > 0) {
+                        const beforeStock = food.stock;
+                        if (serveFood(food.id, cust.id, true)) {
+                            totalPlatesServed += (beforeStock - food.stock);
+                        }
+                    }
+                });
+            });
+
+            if (totalPlatesServed > 0) {
+                sfx.cash();
+                launchMiniConfetti();
+                renderStudentCafe();
+            }
+            return totalPlatesServed;
+        }
+
+        function countReadyOrderLines() {
+            const tempStock = {};
+            state.foods.forEach(f => { tempStock[f.id] = f.unlocked ? f.stock : 0; });
+            let readyCount = 0;
+            state.customers.forEach(cust => {
+                cust.orders.forEach(ord => {
+                    if ((tempStock[ord.foodId] || 0) > 0) {
+                        const used = Math.min(tempStock[ord.foodId], ord.qty);
+                        tempStock[ord.foodId] -= used;
+                        readyCount += used;
+                    }
+                });
+            });
+            return readyCount;
+        }
+
+        function renderStudentCafe() {
+            el.hudCash.textContent = `$${state.cash.toLocaleString()}`;
+            el.hudStreak.textContent = `${state.streak}x`;
+            el.hudServedCount.textContent = state.servedCount;
+
+            const spec = getCurrentCafeLevelSpec();
+            const nextSpec = CAFE_LEVEL_CONFIG.find(c => c.level === spec.level + 1);
+            el.hudCafeLevelBadge.textContent = `⭐ Cafe Lv.${spec.level} / 10`;
+            el.hudCafeLevelDesc.textContent = `${spec.maxCustomers} Seats • Up to ${spec.maxLines} Orders (×${spec.maxQtyPerLine})`;
+
+            if (nextSpec) {
+                const progress = Math.min(100, Math.round(((state.servedCount - spec.minServed) / (nextSpec.minServed - spec.minServed)) * 100));
+                el.hudCafeXpBar.style.width = `${Math.max(4, progress)}%`;
+            } else {
+                el.hudCafeXpBar.style.width = '100%';
+            }
+
+            el.hudAutoServerPill.classList.toggle('hidden', !state.upgrades.autoServer);
+            const readyPlates = countReadyOrderLines();
+            el.serveAllReadyLabel.textContent = `Serve All Ready (${readyPlates})`;
+            el.serveAllReadyBtn.disabled = readyPlates === 0;
+
+            const anyAffordable = canAffordAnyUpgrade();
+            el.openShopBtn.className = anyAffordable
+                ? 'bg-[#e09f24] hover:bg-[#f5b027] active:translate-y-0.5 text-white font-display font-bold text-xl sm:text-2xl px-7 sm:px-12 py-3.5 sm:py-4 rounded-xl shadow-md transition min-w-[165px] sm:min-w-[235px] text-center'
+                : 'bg-[#9e7330] hover:bg-[#b58335] active:translate-y-0.5 text-white/95 font-display font-bold text-xl sm:text-2xl px-7 sm:px-12 py-3.5 sm:py-4 rounded-xl shadow-md transition min-w-[165px] sm:min-w-[235px] text-center';
+
+            // 1. Render up to 10 Customer Stations in a 2-Row Grid (5 Top Row, 5 Bottom Row)
+            const slots = Array.from({ length: spec.maxCustomers }, (_, i) => i);
+            el.customersGrid.innerHTML = slots.map(idx => {
+                const cust = state.customers[idx];
+                if (!cust) {
+                    return `<div class="w-full h-36 sm:h-44 flex items-end justify-center opacity-30"><div class="text-4xl">🪑</div></div>`;
+                }
+
+                const orderRowsHtml = cust.orders.map(ord => {
+                    const f = state.foods.find(item => item.id === ord.foodId);
+                    const stockCount = f ? f.stock : 0;
+                    const isFullyReady = stockCount >= ord.qty;
+                    const isPartiallyReady = stockCount > 0 && stockCount < ord.qty;
+
+                    let rowStyle = 'bg-slate-100/70 border border-transparent text-slate-400';
+                    let badgeHtml = '';
+                    if (isFullyReady) {
+                        rowStyle = 'bg-emerald-50 border border-emerald-400 text-emerald-950';
+                        badgeHtml = '<span class="text-[9px] font-black uppercase bg-emerald-500 text-white px-1 py-0.5 rounded">Ready</span>';
+                    } else if (isPartiallyReady) {
+                        rowStyle = 'bg-amber-50 border border-amber-400 text-amber-950';
+                        badgeHtml = `<span class="text-[9px] font-black uppercase bg-amber-500 text-white px-1 py-0.5 rounded">${stockCount}/${ord.qty}</span>`;
+                    }
+
+                    return `
+                        <div class="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-lg transition ${rowStyle}">
+                            <div class="flex items-center gap-1">
+                                <span class="text-xl sm:text-2xl leading-none">${f?.emoji || '🍞'}</span>
+                                <span class="font-display font-bold text-base sm:text-lg tracking-tight">× ${ord.qty}</span>
+                            </div>
+                            ${badgeHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                const hasAnyReady = cust.orders.some(ord => {
+                    const f = state.foods.find(item => item.id === ord.foodId);
+                    return f && f.unlocked && f.stock > 0;
+                });
+
+                return `
+                    <div data-serve-cust="${cust.id}" class="w-full cursor-pointer flex items-end justify-center gap-1.5 sm:gap-2 select-none group">
+                        <div class="critter-bobble transition-transform group-active:scale-95">
+                            ${BLOOKET_CRITTER_SVGS[cust.critterKey] || BLOOKET_CRITTER_SVGS.goat}
+                        </div>
+                        <div class="cafe-speech-bubble flex-1 max-w-[155px] min-h-[136px] sm:min-h-[155px] max-h-[185px] overflow-y-auto p-2 flex flex-col justify-between gap-1 transition-transform group-hover:-translate-y-0.5 ${hasAnyReady ? 'ring-4 ring-emerald-400/70' : ''}">
+                            <div class="flex flex-col gap-1">
+                                ${orderRowsHtml}
+                            </div>
+                            ${hasAnyReady ? '<div class="text-[9px] font-black uppercase text-center text-emerald-700 bg-emerald-100 rounded-md py-0.5">Tap to Serve!</div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 2. Render 9 Circular Dinner Plates
+            const topRow = state.foods.slice(0, 5);
+            const bottomRow = state.foods.slice(5, 9);
+
+            const renderPlateHtml = (food) => {
+                if (!food.unlocked) {
+                    return `
+                        <button type="button" data-unlock-food="${food.id}" class="cafe-plate-locked relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center group active:translate-y-1 transition" title="Unlock ${food.name} ($${food.unlockCost})">
+                            <div class="cafe-plate-locked-inner w-16 h-16 sm:w-22 sm:h-22 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center">
+                                <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v3H9V7z"/>
+                                </svg>
+                                <span class="text-[10px] sm:text-xs font-black text-white/90 mt-0.5">$${food.unlockCost}</span>
+                            </div>
+                        </button>
+                    `;
+                }
+
+                const payout = getFoodPlatePayout(food);
+                const restockYield = getFoodRestockYield(food);
+                const neededByCustomer = state.customers.some(c => c.orders.some(o => o.foodId === food.id && o.qty > 0));
+                const canServeNow = food.stock > 0 && neededByCustomer;
+                return `
+                    <button type="button" data-station-food="${food.id}" class="cafe-plate-unlocked relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center select-none ${canServeNow ? 'ring-4 ring-amber-300' : ''}">
+                        <div class="cafe-plate-inner-rim w-16 h-16 sm:w-22 sm:h-22 md:w-24 md:h-24 flex flex-col items-center justify-center">
+                            <span class="text-4xl sm:text-5xl md:text-6xl leading-none drop-shadow-sm">${food.emoji}</span>
+                            <span class="text-[10px] sm:text-xs font-extrabold text-slate-600 mt-1">Lv.${food.level} • $${payout}</span>
+                            <span class="text-[9px] sm:text-[10px] font-bold text-sky-600 leading-none">+${restockYield}/restock</span>
+                        </div>
+                        <span class="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 ${food.stock > 0 ? 'bg-[#29b6f6]' : 'bg-rose-500'} text-white font-display font-bold text-sm sm:text-lg min-w-[28px] sm:min-w-[34px] h-7 sm:h-8 px-1.5 rounded-lg flex items-center justify-center shadow">
+                            ${food.stock}
+                        </span>
+                    </button>
+                `;
+            };
+
+            el.foodStationsGrid.innerHTML = `
+                <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
+                    ${topRow.map(renderPlateHtml).join('')}
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
+                    ${bottomRow.map(renderPlateHtml).join('')}
+                </div>
+            `;
+        }
+
+        function canAffordAnyUpgrade() {
+            if (!state.upgrades.autoServer && state.cash >= 150) return true;
+            const effCost = state.upgrades.restockEfficiencyLevel * 55;
+            if (state.upgrades.restockEfficiencyLevel < 5 && state.cash >= effCost) return true;
+            return state.foods.some(f => {
+                if (!f.unlocked) return state.cash >= f.unlockCost;
+                if (f.level < 5) return state.cash >= FOOD_LEVEL_UPGRADE_COSTS[f.level];
+                return false;
+            });
+        }
+
+        el.serveAllReadyBtn.addEventListener('click', () => {
+            serveAllReadyCustomers();
+        });
+
+        el.customersGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('[data-serve-cust]');
+            if (!card) return;
+            const cust = state.customers.find(c => c.id === card.dataset.serveCust);
+            if (!cust) return;
+
+            let servedAnything = false;
+            const orderSnapshot = [...cust.orders];
+            orderSnapshot.forEach(o => {
+                const food = state.foods.find(f => f.id === o.foodId);
+                if (food && food.unlocked && food.stock > 0 && o.qty > 0) {
+                    if (serveFood(food.id, cust.id, true)) {
+                        servedAnything = true;
+                    }
+                }
+            });
+
+            if (servedAnything) {
+                sfx.cash();
+                launchMiniConfetti();
+                renderStudentCafe();
+            } else {
+                sfx.wrong();
+            }
+        });
+
+        el.foodStationsGrid.addEventListener('click', (e) => {
+            const station = e.target.closest('[data-station-food]');
+            if (station) {
+                serveFood(station.dataset.stationFood);
+                return;
+            }
+            const unlockBtn = e.target.closest('[data-unlock-food]');
+            if (unlockBtn) {
+                const food = state.foods.find(f => f.id === unlockBtn.dataset.unlockFood);
+                if (food && state.cash >= food.unlockCost) {
+                    state.cash -= food.unlockCost;
+                    food.unlocked = true;
+                    food.stock = getFoodRestockYield(food);
+                    sfx.rankUp();
+                    publishMyStudentProgress(0);
+                    renderStudentCafe();
+                } else {
+                    sfx.wrong();
+                }
+            }
+        });
+
+        el.toggleEarningsSidebarBtn.addEventListener('click', () => {
+            sfx.pop();
+            el.kidsEarningsSidebar.classList.toggle('hidden');
+        });
+
+        el.rightEdgeEarningsTab.addEventListener('click', () => {
+            sfx.pop();
+            el.kidsEarningsSidebar.classList.toggle('hidden');
+        });
+
+        el.closeEarningsSidebarBtn.addEventListener('click', () => {
+            sfx.pop();
+            el.kidsEarningsSidebar.classList.add('hidden');
+        });
+
+        el.studentFullscreenBtn.addEventListener('click', () => {
+            sfx.pop();
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen?.().catch(() => {});
+            } else {
+                document.exitFullscreen?.().catch(() => {});
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && state.role === 'student') {
+                const activeTag = document.activeElement?.tagName;
+                if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+                if (el.restockModal.classList.contains('hidden') && el.shopModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    openRestockTrivia();
+                }
+            }
+        });
+
+        el.muteToggleBtn.addEventListener('click', () => {
+            sfx.muted = !sfx.muted;
+            el.muteToggleBtn.textContent = sfx.muted ? '🔇' : '🔊';
+        });
+
+        /**
+         * ============================================================================
+         * RESTOCK TRIVIA (AUDIO QUESTIONS & AUDIO OPTIONS) & UPGRADE SHOP MODALS
+         * ============================================================================
+         */
+        function openRestockTrivia() {
+            if (state.triviaNextTimer) {
+                clearTimeout(state.triviaNextTimer);
+                state.triviaNextTimer = null;
+            }
+            sfx.pop();
+            const pool = state.studioQuestions.length > 0 ? state.studioQuestions : PRESET_PACKS.housework;
+            const q = pool[Math.floor(Math.random() * pool.length)];
+            state.currentQuestion = q;
+            state.triviaAnswered = false;
+
+            el.triviaQuestionText.textContent = q.q || 'Listen and choose!';
+            el.triviaFeedback.classList.add('hidden');
+
+            // Render Question Image + Speaker Button when Question Audio is attached
+            const qAudioBtnHtml = q.qAudio
+                ? `<button type="button" id="play-question-audio-btn" class="btn-juicy bg-indigo-600 hover:bg-indigo-500 text-white font-display font-bold text-lg sm:text-xl px-5 py-3 rounded-2xl border-3 border-indigo-900 flex items-center gap-2 shadow-md">
+                        <span class="text-2xl">🔊</span>
+                        <span>Listen to Question</span>
+                   </button>`
+                : '';
+
+            let qImgHtml = '';
+            if (q.qImg) {
+                if (q.qImg.startsWith('svg:')) {
+                    qImgHtml = getVisualHtml(q.qImg, 'w-32 h-32 sm:w-36 sm:h-36');
+                } else if (q.qImg.startsWith('sticker:')) {
+                    qImgHtml = `<div class="text-7xl bg-white border-3 border-sky-300 rounded-2xl px-7 py-3 shadow-sm">${q.qImg.replace('sticker:', '')}</div>`;
+                } else {
+                    qImgHtml = `<img src="${escapeHtml(q.qImg)}" alt="Question Visual" data-zoom-img="${escapeHtml(q.qImg)}" class="max-h-44 rounded-2xl border-3 border-sky-300 cursor-zoom-in object-contain">`;
+                }
+            }
+
+            if (qImgHtml || qAudioBtnHtml) {
+                el.triviaQImgWrap.classList.remove('hidden');
+                el.triviaQImgWrap.innerHTML = `<div class="flex flex-col sm:flex-row items-center justify-center gap-3">${qImgHtml}${qAudioBtnHtml}</div>`;
+            } else {
+                el.triviaQImgWrap.classList.add('hidden');
+                el.triviaQImgWrap.innerHTML = '';
+            }
+
+            const colors = [
+                'from-rose-400 to-rose-600 border-rose-800',
+                'from-sky-400 to-blue-600 border-blue-800',
+                'from-amber-400 to-orange-500 border-orange-700',
+                'from-emerald-400 to-emerald-600 border-emerald-800'
+            ];
+            const optionLetters = ['A', 'B', 'C', 'D'];
+
+            el.triviaOptionsGrid.innerHTML = q.options.map((opt, idx) => {
+                let visual = '';
+                if (opt.img) {
+                    if (opt.img.startsWith('svg:')) {
+                        visual = getVisualHtml(opt.img, 'w-20 h-20 sm:w-24 sm:h-24');
+                    } else if (opt.img.startsWith('sticker:')) {
+                        visual = `<span class="text-5xl bg-white/95 rounded-2xl px-3 py-1.5 shadow-sm">${opt.img.replace('sticker:', '')}</span>`;
+                    } else {
+                        visual = `<img src="${escapeHtml(opt.img)}" alt="Option" class="w-16 h-16 rounded-xl object-cover border-2 border-white bg-white">`;
+                    }
+                }
+
+                const hasOptAudio = Boolean(opt.audio);
+                const audioSpeakerPill = hasOptAudio
+                    ? `<button type="button" data-play-opt-audio="${idx}" class="bg-white hover:bg-amber-100 text-indigo-900 font-display font-bold text-base sm:text-lg px-3.5 py-2 rounded-xl border-2 border-indigo-900/30 shadow flex items-center gap-1.5 shrink-0" title="Listen to Option ${optionLetters[idx]}">
+                            <span class="text-xl">🔊</span>
+                            <span>Listen ${optionLetters[idx]}</span>
+                       </button>`
+                    : '';
+
+                const displayLabel = q.hideOptionText && hasOptAudio
+                    ? `Option ${optionLetters[idx]}`
+                    : escapeHtml(opt.text);
+
+                return `
+                    <div class="relative flex items-stretch gap-2">
+                        ${audioSpeakerPill}
+                        <button type="button" data-answer-idx="${idx}" class="btn-juicy flex-1 bg-gradient-to-b ${colors[idx % 4]} text-white rounded-2xl border-4 p-3.5 flex items-center justify-center gap-3 min-h-[78px] font-display font-bold text-xl sm:text-2xl shadow-md">
+                            ${visual}
+                            <span>${displayLabel}</span>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            el.restockModal.classList.remove('hidden');
+
+            // Automatically speak the question audio when the card opens
+            if (q.qAudio) {
+                setTimeout(() => playAudioClip(q.qAudio, q.q), 180);
+            }
+        }
+
+        el.triviaQImgWrap.addEventListener('click', (e) => {
+            const audioBtn = e.target.closest('#play-question-audio-btn');
+            if (audioBtn && state.currentQuestion) {
+                playAudioClip(state.currentQuestion.qAudio, state.currentQuestion.q);
+                return;
+            }
+            const img = e.target.closest('[data-zoom-img]');
+            if (!img) return;
+            el.lightboxImg.src = img.dataset.zoomImg;
+            el.lightboxModal.classList.remove('hidden');
+        });
+
+        el.closeLightboxBtn.addEventListener('click', () => {
+            el.lightboxModal.classList.add('hidden');
+        });
+
+        el.triviaOptionsGrid.addEventListener('click', (e) => {
+            const listenOptBtn = e.target.closest('[data-play-opt-audio]');
+            if (listenOptBtn && state.currentQuestion) {
+                e.stopPropagation();
+                const idx = parseInt(listenOptBtn.dataset.playOptAudio, 10);
+                const opt = state.currentQuestion.options[idx];
+                if (opt) playAudioClip(opt.audio, opt.text);
+                return;
+            }
+
+            const btn = e.target.closest('[data-answer-idx]');
+            if (!btn || state.triviaAnswered || !state.currentQuestion) return;
+            state.triviaAnswered = true;
+
+            const chosen = parseInt(btn.dataset.answerIdx, 10);
+            const isCorrect = chosen === state.currentQuestion.correctIndex;
+            state.answeredCount += 1;
+
+            const allOptionBtns = Array.from(el.triviaOptionsGrid.querySelectorAll('[data-answer-idx]'));
+            allOptionBtns.forEach(optBtn => {
+                const idx = parseInt(optBtn.dataset.answerIdx, 10);
+                optBtn.disabled = true;
+                if (idx === state.currentQuestion.correctIndex) {
+                    optBtn.classList.remove('opacity-55');
+                    optBtn.classList.add('ring-4', 'ring-emerald-300', 'scale-[1.03]');
+                    optBtn.insertAdjacentHTML('beforeend', '<span class="ml-1 bg-white text-emerald-700 text-sm font-black px-2 py-0.5 rounded-full">✓ Correct</span>');
+                } else if (idx === chosen && !isCorrect) {
+                    optBtn.classList.add('ring-4', 'ring-rose-300', 'opacity-75');
+                } else {
+                    optBtn.classList.add('opacity-40');
+                }
+            });
+
+            if (isCorrect) {
+                state.correctCount += 1;
+                const bonusCash = Date.now() < state.rushHourUntil ? 10 : 5;
+                state.cash += bonusCash;
+
+                let totalPlatesAdded = 0;
+                state.foods.forEach(f => {
+                    if (f.unlocked) {
+                        const yieldPlates = getFoodRestockYield(f);
+                        f.stock += yieldPlates;
+                        totalPlatesAdded += yieldPlates;
+                    }
+                });
+
+                sfx.correct();
+                launchMiniConfetti();
+                publishMyStudentProgress(bonusCash);
+                renderStudentCafe();
+
+                el.triviaFeedback.className = 'rounded-2xl p-3.5 text-center font-display font-bold text-xl bg-emerald-100 text-emerald-800 border-2 border-emerald-400';
+                el.triviaFeedback.textContent = `🎉 Correct! +${totalPlatesAdded} Plates Restocked & +$${bonusCash}! Next question...`;
+                el.triviaFeedback.classList.remove('hidden');
+
+                state.triviaNextTimer = setTimeout(() => {
+                    if (!el.restockModal.classList.contains('hidden')) {
+                        openRestockTrivia();
+                    }
+                }, 850);
+            } else {
+                state.streak = 0;
+                sfx.wrong();
+                publishMyStudentProgress(0);
+
+                const correctOpt = state.currentQuestion.options[state.currentQuestion.correctIndex];
+                const correctLabel = correctOpt?.text || `Option ${state.currentQuestion.correctIndex + 1}`;
+                el.triviaFeedback.className = 'rounded-2xl p-3.5 text-center font-display font-bold text-xl bg-rose-100 text-rose-800 border-2 border-rose-400';
+                el.triviaFeedback.textContent = `❌ Not quite! Correct Answer: "${correctLabel}" (Next question in 3s...)`;
+                el.triviaFeedback.classList.remove('hidden');
+
+                state.triviaNextTimer = setTimeout(() => {
+                    if (!el.restockModal.classList.contains('hidden')) {
+                        openRestockTrivia();
+                    }
+                }, 3000);
+            }
+        });
+
+        el.openRestockBtn.addEventListener('click', openRestockTrivia);
+        el.closeRestockBtn.addEventListener('click', () => {
+            if (state.triviaNextTimer) {
+                clearTimeout(state.triviaNextTimer);
+                state.triviaNextTimer = null;
+            }
+            sfx.pop();
+            el.restockModal.classList.add('hidden');
+            renderStudentCafe();
+        });
+
+        // Upgrade Shop
+        function renderUpgradeShop() {
+            const effLevel = state.upgrades.restockEfficiencyLevel || 1;
+            const effCost = effLevel * 55;
+            const effMaxed = effLevel >= 5;
+            const autoOwned = state.upgrades.autoServer;
+
+            const globalBoostHtml = `
+                <div class="col-span-1 sm:col-span-2 bg-gradient-to-r from-emerald-50 to-teal-50 border-3 border-emerald-300 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white text-2xl flex items-center justify-center shrink-0">🤖</div>
+                        <div>
+                            <div class="font-display font-bold text-lg text-slate-800">Auto-Serve All Customers</div>
+                            <p class="text-xs font-bold text-slate-600">Automatically serves all waiting customers whenever you have their food in stock!</p>
+                        </div>
+                    </div>
+                    <button type="button" data-buy-autoserver="1" ${autoOwned || state.cash < 150 ? 'disabled' : ''} class="btn-juicy px-5 py-2.5 rounded-xl font-display font-bold text-base border-2 ${autoOwned ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-emerald-500 text-white border-emerald-800'}">
+                        ${autoOwned ? 'UNLOCKED ✓' : 'Unlock $150'}
+                    </button>
+                </div>
+
+                <div class="col-span-1 sm:col-span-2 bg-gradient-to-r from-sky-50 to-cyan-50 border-3 border-sky-300 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-sky-500 text-white text-2xl flex items-center justify-center shrink-0">⚡</div>
+                        <div>
+                            <div class="font-display font-bold text-lg text-slate-800">Restock Efficiency Boost (Lv.${effLevel}/5)</div>
+                            <p class="text-xs font-bold text-slate-600">Earn +1 extra plate on EVERY unlocked food per correct trivia answer!</p>
+                        </div>
+                    </div>
+                    <button type="button" data-buy-efficiency="1" ${effMaxed || state.cash < effCost ? 'disabled' : ''} class="btn-juicy px-5 py-2.5 rounded-xl font-display font-bold text-base border-2 ${effMaxed ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-sky-500 text-white border-sky-800'}">
+                        ${effMaxed ? 'MAX Lv.5 ✓' : `Upgrade $${effCost}`}
+                    </button>
+                </div>
+            `;
+
+            const foodCardsHtml = state.foods.map(food => {
+                if (!food.unlocked) {
+                    const canUnlock = state.cash >= food.unlockCost;
+                    return `
+                        <div class="bg-slate-100 border-3 border-slate-300 rounded-2xl p-3.5 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-3xl opacity-75">${food.emoji}</span>
+                                <div>
+                                    <div class="font-display font-bold text-base text-slate-700">${food.name}</div>
+                                    <div class="text-[11px] font-bold text-slate-500">Locked Plate • Base $${food.basePrice}/plate</div>
+                                </div>
+                            </div>
+                            <button type="button" data-shop-unlock="${food.id}" ${!canUnlock ? 'disabled' : ''} class="btn-juicy bg-amber-400 text-amber-950 font-display font-bold text-sm px-3.5 py-2 rounded-xl border-2 border-amber-600">
+                                Unlock $${food.unlockCost}
+                            </button>
+                        </div>
+                    `;
+                }
+
+                const isMax = food.level >= 5;
+                const upgCost = isMax ? 0 : FOOD_LEVEL_UPGRADE_COSTS[food.level];
+                const curPayout = getFoodPlatePayout(food);
+                const nextPayout = isMax ? curPayout : Math.round(food.basePrice * FOOD_LEVEL_PRICE_MULTIPLIERS[food.level]);
+                const curYield = getFoodRestockYield(food);
+
+                return `
+                    <div class="bg-white border-3 border-emerald-300 rounded-2xl p-3.5 flex items-center justify-between gap-2 shadow-sm">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-3xl">${food.emoji}</span>
+                            <div>
+                                <div class="font-display font-bold text-base text-slate-800">${food.name} <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Lv.${food.level}/5</span></div>
+                                <div class="text-[11px] font-extrabold text-emerald-700">$${curPayout}/plate ${!isMax ? `→ $${nextPayout}` : ''}</div>
+                                <div class="text-[10px] font-bold text-sky-600">+${curYield} plates/restock</div>
+                            </div>
+                        </div>
+                        <button type="button" data-shop-levelup="${food.id}" ${isMax || state.cash < upgCost ? 'disabled' : ''} class="btn-juicy font-display font-bold text-sm px-3.5 py-2 rounded-xl border-2 ${isMax ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-emerald-500 text-white border-emerald-800'}">
+                            ${isMax ? 'MAX ✓' : `Lv.${food.level + 1} ($${upgCost})`}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            el.upgradesList.innerHTML = globalBoostHtml + foodCardsHtml;
+        }
+
+        el.openShopBtn.addEventListener('click', () => {
+            sfx.pop();
+            renderUpgradeShop();
+            el.shopModal.classList.remove('hidden');
+        });
+
+        el.closeShopBtn.addEventListener('click', () => {
+            sfx.pop();
+            el.shopModal.classList.add('hidden');
+        });
+
+        el.upgradesList.addEventListener('click', (e) => {
+            const autoBtn = e.target.closest('[data-buy-autoserver]');
+            if (autoBtn) {
+                if (!state.upgrades.autoServer && state.cash >= 150) {
+                    state.cash -= 150;
+                    state.upgrades.autoServer = true;
+                    sfx.rankUp();
+                    publishMyStudentProgress(0);
+                    renderUpgradeShop();
+                    renderStudentCafe();
+                    serveAllReadyCustomers();
+                } else {
+                    sfx.wrong();
+                }
+                return;
+            }
+
+            const effBtn = e.target.closest('[data-buy-efficiency]');
+            if (effBtn) {
+                const cost = (state.upgrades.restockEfficiencyLevel || 1) * 55;
+                if (state.upgrades.restockEfficiencyLevel < 5 && state.cash >= cost) {
+                    state.cash -= cost;
+                    state.upgrades.restockEfficiencyLevel += 1;
+                    sfx.rankUp();
+                    publishMyStudentProgress(0);
+                    renderUpgradeShop();
+                    renderStudentCafe();
+                } else {
+                    sfx.wrong();
+                }
+                return;
+            }
+
+            const unlockBtn = e.target.closest('[data-shop-unlock]');
+            if (unlockBtn) {
+                const food = state.foods.find(f => f.id === unlockBtn.dataset.shopUnlock);
+                if (food && !food.unlocked && state.cash >= food.unlockCost) {
+                    state.cash -= food.unlockCost;
+                    food.unlocked = true;
+                    food.stock = getFoodRestockYield(food);
+                    sfx.rankUp();
+                    publishMyStudentProgress(0);
+                    renderUpgradeShop();
+                    renderStudentCafe();
+                } else {
+                    sfx.wrong();
+                }
+                return;
+            }
+
+            const lvlBtn = e.target.closest('[data-shop-levelup]');
+            if (lvlBtn) {
+                const food = state.foods.find(f => f.id === lvlBtn.dataset.shopLevelup);
+                if (food && food.unlocked && food.level < 5) {
+                    const cost = FOOD_LEVEL_UPGRADE_COSTS[food.level];
+                    if (state.cash >= cost) {
+                        state.cash -= cost;
+                        food.level += 1;
+                        sfx.rankUp();
+                        publishMyStudentProgress(0);
+                        renderUpgradeShop();
+                        renderStudentCafe();
+                    } else {
+                        sfx.wrong();
+                    }
+                }
+            }
+        });
+
+        function launchMiniConfetti() {
+            const colors = ['#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6'];
+            for (let i = 0; i < 14; i++) {
+                const div = document.createElement('div');
+                div.className = 'confetti-piece';
+                div.style.left = `${15 + Math.random() * 70}vw`;
+                div.style.backgroundColor = colors[i % colors.length];
+                div.style.animationDuration = `${0.9 + Math.random() * 0.7}s`;
+                document.body.appendChild(div);
+                setTimeout(() => div.remove(), 1700);
+            }
+        }
+
+        // --- Main Cafe Simulation Loop ---
+        let lastFrameTime = performance.now();
+        let customerSpawnTimer = 0;
+
+        function gameLoop(now) {
+            const dt = Math.min(0.25, (now - lastFrameTime) / 1000);
+            lastFrameTime = now;
+
+            if (state.role === 'student') {
+                const rushRemaining = Math.ceil((state.rushHourUntil - Date.now()) / 1000);
+                if (rushRemaining > 0) {
+                    el.rushHourBanner.classList.remove('hidden');
+                    el.rushHourTimer.textContent = rushRemaining;
+                } else {
+                    el.rushHourBanner.classList.add('hidden');
+                }
+
+                if (el.restockModal.classList.contains('hidden') && el.shopModal.classList.contains('hidden')) {
+                    const spec = getCurrentCafeLevelSpec();
+                    customerSpawnTimer += dt;
+                    if (customerSpawnTimer >= 1.5 && state.customers.length < spec.maxCustomers) {
+                        customerSpawnTimer = 0;
+                        spawnCustomer();
+                        renderStudentCafe();
+                    }
+
+                    if (state.upgrades.autoServer) {
+                        state.autoServeTimer += dt;
+                        if (state.autoServeTimer >= 0.75) {
+                            state.autoServeTimer = 0;
+                            serveAllReadyCustomers();
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = () => {
+            try {
+                const savedDeck = localStorage.getItem('critter_cafe_studio_deck');
+                if (savedDeck) {
+                    const parsed = JSON.parse(savedDeck);
+                    if (Array.isArray(parsed) && parsed.length > 0) state.studioQuestions = parsed;
+                }
+            } catch (e) {}
+
+            loadRoomFromStorage();
+            if (!checkIncomingQrHash()) {
+                showPortal('gate');
+            }
+            lastFrameTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
